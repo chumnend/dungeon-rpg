@@ -9,7 +9,7 @@ build:
 
 .PHONY: start
 start:
-	@echo "Executing..."
+	@echo "Executing...\n"
 	@./bin/main
 
 .PHONY: clean

@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"github.com/chumnend/simple-rpg/game"
+	"github.com/chumnend/simple-rpg/ui"
+)
 
 func main() {
-	fmt.Println("Hello World")
+	ui := &ui.UI{}
+	game.Run(ui)
 }
