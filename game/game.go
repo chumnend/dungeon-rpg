@@ -21,15 +21,28 @@ type Tile rune
 
 // Enum of differetn space types
 const (
-	SpaceStone Tile = '#'
-	SpaceDirt  Tile = '.'
-	SpaceDoor  Tile = '|'
-	SpaceBlank Tile = 0
+	SpaceStone   Tile = '#'
+	SpaceDirt         = '.'
+	SpaceDoor         = '|'
+	SpaceBlank        = 0
+	SpacePlayer       = 'P'
+	SpacePending      = -1
 )
+
+// Entity represnts an object
+type Entity struct {
+	X, Y int
+}
+
+// Player represents a player object
+type Player struct {
+	Entity
+}
 
 // Level represents the mapping of a level
 type Level struct {
-	Tiles [][]Tile
+	Tiles  [][]Tile
+	Player Player
 }
 
 func loadLevelFromFile(filename string) *Level {
@@ -57,20 +70,42 @@ func loadLevelFromFile(filename string) *Level {
 		level.Tiles[i] = make([]Tile, longestRow)
 	}
 
-	for row := range level.Tiles {
-		line := lines[row]
-		for col, c := range line {
+	for y := range level.Tiles {
+		line := lines[y]
+		for x, c := range line {
 			switch c {
 			case ' ', '\t', '\n', '\r':
-				level.Tiles[row][col] = SpaceBlank
+				level.Tiles[y][x] = SpaceBlank
 			case '#':
-				level.Tiles[row][col] = SpaceStone
+				level.Tiles[y][x] = SpaceStone
 			case '|':
-				level.Tiles[row][col] = SpaceDoor
+				level.Tiles[y][x] = SpaceDoor
 			case '.':
-				level.Tiles[row][col] = SpaceDirt
+				level.Tiles[y][x] = SpaceDirt
+			case 'P':
+				level.Player.X = x
+				level.Player.Y = y
+				level.Tiles[y][x] = SpacePending
 			default:
 				panic("Invalid Character: " + string(c))
+			}
+		}
+	}
+
+	for y, row := range level.Tiles {
+		for x, tile := range row {
+			if tile == SpacePending {
+			SearchLoop:
+				for searchX := x - 1; searchX <= x+1; searchX++ {
+					for searchY := y - 1; searchY <= y+1; searchY++ {
+						searchTile := level.Tiles[searchY][searchX]
+						switch searchTile {
+						case SpaceDirt:
+							level.Tiles[y][x] = SpaceDirt
+							break SearchLoop
+						}
+					}
+				}
 			}
 		}
 	}

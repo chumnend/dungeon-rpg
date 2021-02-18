@@ -163,6 +163,9 @@ func (ui *UI) Draw(level *game.Level) {
 		}
 	}
 
+	// 21, 59
+	renderer.Copy(textureAtlas, &sdl.Rect{21 * 32, 59 * 32, 32, 32}, &sdl.Rect{int32(level.Player.X * 32), int32(level.Player.Y * 32), 32, 32})
+
 	renderer.Present()
 	sdl.Delay(3000)
 }
