@@ -19,10 +19,12 @@ func Run(ui UI) {
 // Tile represents the representation of an element in a map
 type Tile rune
 
+// Enum of differetn space types
 const (
-	stone Tile = '#'
-	dirt       = '.'
-	door       = '|'
+	SpaceStone Tile = '#'
+	SpaceDirt  Tile = '.'
+	SpaceDoor  Tile = '|'
+	SpaceBlank Tile = ' '
 )
 
 // Level represents the mapping of a level
@@ -53,6 +55,24 @@ func loadLevelFromFile(filename string) *Level {
 	level.Tiles = make([][]Tile, len(lines))
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)
+	}
+
+	for row := range level.Tiles {
+		line := lines[row]
+		for col, c := range line {
+			switch c {
+			case ' ', '\t', '\n', '\r':
+				level.Tiles[row][col] = SpaceBlank
+			case '#':
+				level.Tiles[row][col] = SpaceStone
+			case '|':
+				level.Tiles[row][col] = SpaceDoor
+			case '.':
+				level.Tiles[row][col] = SpaceDirt
+			default:
+				panic("Invalid Character: " + string(c))
+			}
+		}
 	}
 
 	return level

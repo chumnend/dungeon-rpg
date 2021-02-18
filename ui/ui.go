@@ -69,6 +69,8 @@ func imgFileToTexture(filename string) *sdl.Texture {
 }
 
 func loadTextureIndex() {
+	textureIndex = make(map[game.Tile]sdl.Rect)
+
 	file, err := os.Open("ui/assets/atlas-index.txt")
 	if err != nil {
 		panic(err)
@@ -94,7 +96,8 @@ func loadTextureIndex() {
 			panic(err)
 		}
 
-		fmt.Println(tile, x, y)
+		rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
+		textureIndex[tile] = rect
 	}
 }
 
@@ -130,10 +133,14 @@ type UI struct {
 
 // Draw draws a level for the game
 func (ui *UI) Draw(level *game.Level) {
-	fmt.Println("Hello World")
+	for y, row := range level.Tiles {
+		for x, tile := range row {
+			srcRect := textureIndex[tile]
+			destRect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
+			renderer.Copy(textureAtlas, &srcRect, &destRect)
+		}
+	}
 
-	renderer.Copy(textureAtlas, nil, nil)
 	renderer.Present()
-
-	sdl.Delay(5000)
+	sdl.Delay(3000)
 }
