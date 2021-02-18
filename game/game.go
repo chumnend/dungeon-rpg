@@ -24,7 +24,7 @@ const (
 	SpaceStone Tile = '#'
 	SpaceDirt  Tile = '.'
 	SpaceDoor  Tile = '|'
-	SpaceBlank Tile = ' '
+	SpaceBlank Tile = 0
 )
 
 // Level represents the mapping of a level

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"image/png"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ const (
 var window *sdl.Window
 var renderer *sdl.Renderer
 var textureAtlas *sdl.Texture
-var textureIndex map[game.Tile]sdl.Rect
+var textureIndex map[game.Tile][]sdl.Rect
 
 func imgFileToTexture(filename string) *sdl.Texture {
 	file, err := os.Open(filename)
@@ -69,7 +70,7 @@ func imgFileToTexture(filename string) *sdl.Texture {
 }
 
 func loadTextureIndex() {
-	textureIndex = make(map[game.Tile]sdl.Rect)
+	textureIndex = make(map[game.Tile][]sdl.Rect)
 
 	file, err := os.Open("ui/assets/atlas-index.txt")
 	if err != nil {
@@ -82,22 +83,35 @@ func loadTextureIndex() {
 		line = strings.TrimSpace(line)
 
 		tile := game.Tile(line[0])
-		pos := strings.Split(line[1:], ",")
+		tileInfo := strings.Split(line[1:], ",") // x, y, variation
 
-		posX := strings.TrimSpace(pos[0])
-		x, err := strconv.ParseInt(posX, 10, 64)
+		x, err := strconv.ParseInt(strings.TrimSpace(tileInfo[0]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
 
-		posY := strings.TrimSpace(pos[1])
-		y, err := strconv.ParseInt(posY, 10, 64)
+		y, err := strconv.ParseInt(strings.TrimSpace(tileInfo[1]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
 
-		rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
-		textureIndex[tile] = rect
+		variation, err := strconv.ParseInt(strings.TrimSpace(tileInfo[2]), 10, 64)
+		if err != nil {
+			panic(err)
+		}
+
+		rects := make([]sdl.Rect, 0)
+		for i := 0; i < int(variation); i++ {
+			rects = append(rects, sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32})
+			x = (x + 1)
+			if x > 62 {
+				x = 0
+				y++
+			}
+		}
+
+		// rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
+		textureIndex[tile] = rects
 	}
 }
 
@@ -133,9 +147,17 @@ type UI struct {
 
 // Draw draws a level for the game
 func (ui *UI) Draw(level *game.Level) {
+	rand.Seed(1)
+
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			srcRect := textureIndex[tile]
+			if tile == game.SpaceBlank {
+				continue
+			}
+
+			srcRects := textureIndex[tile]
+			srcRect := srcRects[rand.Intn(len(srcRects))]
+
 			destRect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
 			renderer.Copy(textureAtlas, &srcRect, &destRect)
 		}
