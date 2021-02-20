@@ -163,9 +163,32 @@ func (ui *UI) Draw(level *game.Level) {
 		}
 	}
 
-	// 21, 59
-	renderer.Copy(textureAtlas, &sdl.Rect{21 * 32, 59 * 32, 32, 32}, &sdl.Rect{int32(level.Player.X * 32), int32(level.Player.Y * 32), 32, 32})
-
+	renderer.Copy(textureAtlas, &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}, &sdl.Rect{X: int32(level.Player.X * 32), Y: int32(level.Player.Y * 32), W: 32, H: 32})
 	renderer.Present()
-	sdl.Delay(3000)
+}
+
+// GetInput returns an input state for the game
+func (ui *UI) GetInput() *game.Input {
+	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+		switch e := event.(type) {
+		case *sdl.KeyboardEvent:
+			code := e.Keysym.Scancode
+			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_UP {
+				return &game.Input{Type: game.Up}
+			}
+			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_DOWN {
+				return &game.Input{Type: game.Down}
+			}
+			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_LEFT {
+				return &game.Input{Type: game.Left}
+			}
+			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_RIGHT {
+				return &game.Input{Type: game.Right}
+			}
+		case *sdl.QuitEvent:
+			return &game.Input{Type: game.Quit}
+		}
+	}
+
+	return nil
 }

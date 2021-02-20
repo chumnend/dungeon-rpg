@@ -8,12 +8,24 @@ import (
 // UI interface
 type UI interface {
 	Draw(*Level)
+	GetInput() *Input
 }
 
-// Run runs the game user interface
-func Run(ui UI) {
-	level1 := loadLevelFromFile("game/maps/level1.map")
-	ui.Draw(level1)
+// InputType used for input enumeration
+type InputType int
+
+// Input Enum for getting input for the game
+const (
+	Up InputType = iota
+	Down
+	Left
+	Right
+	Quit
+)
+
+// Input represents the key board input
+type Input struct {
+	Type InputType
 }
 
 // Tile represents the representation of an element in a map
@@ -43,6 +55,20 @@ type Player struct {
 type Level struct {
 	Tiles  [][]Tile
 	Player Player
+}
+
+// Run runs the game user interface
+func Run(ui UI) {
+	level1 := loadLevelFromFile("game/maps/level1.map")
+
+	for {
+		ui.Draw(level1)
+		input := ui.GetInput()
+
+		if input != nil && input.Type == Quit {
+			return
+		}
+	}
 }
 
 func loadLevelFromFile(filename string) *Level {
