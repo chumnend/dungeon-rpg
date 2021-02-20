@@ -67,17 +67,35 @@ func Run(ui UI) {
 		if input != nil {
 			switch input.Type {
 			case Up:
-				level.Player.Y--
+				if canWalk(level, level.Player.X, level.Player.Y-1) {
+					level.Player.Y--
+				}
 			case Down:
-				level.Player.Y++
+				if canWalk(level, level.Player.X, level.Player.Y+1) {
+					level.Player.Y++
+				}
 			case Left:
-				level.Player.X--
+				if canWalk(level, level.Player.X-1, level.Player.Y) {
+					level.Player.X--
+				}
 			case Right:
-				level.Player.X++
+				if canWalk(level, level.Player.X+1, level.Player.Y) {
+					level.Player.X++
+				}
 			case Quit:
 				return
 			}
 		}
+	}
+}
+
+func canWalk(level *Level, x, y int) bool {
+	tile := level.Tiles[y][x]
+	switch tile {
+	case SpaceBlank, SpaceDoor, SpaceStone:
+		return false
+	default:
+		return true
 	}
 }
 
