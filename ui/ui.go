@@ -149,6 +149,8 @@ type UI struct {
 func (ui *UI) Draw(level *game.Level) {
 	rand.Seed(1)
 
+	renderer.Clear()
+
 	for y, row := range level.Tiles {
 		for x, tile := range row {
 			if tile == game.SpaceBlank {

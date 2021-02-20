@@ -33,12 +33,13 @@ type Tile rune
 
 // Enum of differetn space types
 const (
-	SpaceStone   Tile = '#'
-	SpaceDirt         = '.'
-	SpaceDoor         = '|'
-	SpaceBlank        = 0
-	SpacePlayer       = 'P'
-	SpacePending      = -1
+	SpaceStone      Tile = '#'
+	SpaceDirt            = '.'
+	SpaceClosedDoor      = '|'
+	SpaceOpenedDoor      = '/'
+	SpaceBlank           = 0
+	SpacePlayer          = 'P'
+	SpacePending         = -1
 )
 
 // Entity represnts an object
@@ -69,18 +70,26 @@ func Run(ui UI) {
 			case Up:
 				if canWalk(level, level.Player.X, level.Player.Y-1) {
 					level.Player.Y--
+				} else {
+					checkDoor(level, level.Player.X, level.Player.Y-1)
 				}
 			case Down:
 				if canWalk(level, level.Player.X, level.Player.Y+1) {
 					level.Player.Y++
+				} else {
+					checkDoor(level, level.Player.X, level.Player.Y+1)
 				}
 			case Left:
 				if canWalk(level, level.Player.X-1, level.Player.Y) {
 					level.Player.X--
+				} else {
+					checkDoor(level, level.Player.X-1, level.Player.Y)
 				}
 			case Right:
 				if canWalk(level, level.Player.X+1, level.Player.Y) {
 					level.Player.X++
+				} else {
+					checkDoor(level, level.Player.X+1, level.Player.Y)
 				}
 			case Quit:
 				return
@@ -92,10 +101,17 @@ func Run(ui UI) {
 func canWalk(level *Level, x, y int) bool {
 	tile := level.Tiles[y][x]
 	switch tile {
-	case SpaceBlank, SpaceDoor, SpaceStone:
+	case SpaceBlank, SpaceClosedDoor, SpaceStone:
 		return false
 	default:
 		return true
+	}
+}
+
+func checkDoor(level *Level, x, y int) {
+	tile := level.Tiles[y][x]
+	if tile == SpaceClosedDoor {
+		level.Tiles[y][x] = SpaceOpenedDoor
 	}
 }
 
@@ -133,7 +149,9 @@ func loadLevelFromFile(filename string) *Level {
 			case '#':
 				level.Tiles[y][x] = SpaceStone
 			case '|':
-				level.Tiles[y][x] = SpaceDoor
+				level.Tiles[y][x] = SpaceClosedDoor
+			case '/':
+				level.Tiles[y][x] = SpaceOpenedDoor
 			case '.':
 				level.Tiles[y][x] = SpaceDirt
 			case 'P':
