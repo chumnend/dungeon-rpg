@@ -59,14 +59,24 @@ type Level struct {
 
 // Run runs the game user interface
 func Run(ui UI) {
-	level1 := loadLevelFromFile("game/maps/level1.map")
+	level := loadLevelFromFile("game/maps/level1.map")
 
 	for {
-		ui.Draw(level1)
+		ui.Draw(level)
 		input := ui.GetInput()
-
-		if input != nil && input.Type == Quit {
-			return
+		if input != nil {
+			switch input.Type {
+			case Up:
+				level.Player.Y--
+			case Down:
+				level.Player.Y++
+			case Left:
+				level.Player.X--
+			case Right:
+				level.Player.X++
+			case Quit:
+				return
+			}
 		}
 	}
 }
