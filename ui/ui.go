@@ -23,6 +23,9 @@ var renderer *sdl.Renderer
 var textureAtlas *sdl.Texture
 var textureIndex map[game.Tile][]sdl.Rect
 
+var centerX int
+var centerY int
+
 func imgFileToTexture(filename string) *sdl.Texture {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -138,6 +141,9 @@ func init() {
 
 	textureAtlas = imgFileToTexture("ui/assets/tiles.png")
 	loadTextureIndex()
+
+	centerX = -1
+	centerY = -1
 }
 
 // UI struct represents the user interface for the game
@@ -150,8 +156,23 @@ func (ui *UI) Draw(level *game.Level) {
 	rand.Seed(1)
 	renderer.Clear()
 
-	centerX := level.Player.X
-	centerY := level.Player.Y
+	if centerX == -1 {
+		centerX = level.Player.X
+		centerY = level.Player.Y
+	}
+
+	limit := 5
+	if level.Player.X > centerX+limit {
+		centerX++
+	} else if level.Player.X < centerX-limit {
+		centerX--
+	}
+
+	if level.Player.Y > centerY+limit {
+		centerY++
+	} else if level.Player.Y < centerY-limit {
+		centerY--
+	}
 
 	offsetX := int32((windowWidth / 2) - centerX*32)
 	offsetY := int32((windowHeight / 2) - centerY*32)
