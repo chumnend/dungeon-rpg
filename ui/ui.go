@@ -148,8 +148,13 @@ type UI struct {
 // Draw draws a level for the game
 func (ui *UI) Draw(level *game.Level) {
 	rand.Seed(1)
-
 	renderer.Clear()
+
+	centerX := level.Player.X
+	centerY := level.Player.Y
+
+	offsetX := int32((windowWidth / 2) - centerX*32)
+	offsetY := int32((windowHeight / 2) - centerY*32)
 
 	for y, row := range level.Tiles {
 		for x, tile := range row {
@@ -159,13 +164,19 @@ func (ui *UI) Draw(level *game.Level) {
 
 			srcRects := textureIndex[tile]
 			srcRect := srcRects[rand.Intn(len(srcRects))]
-
-			destRect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
+			destRect := sdl.Rect{
+				X: int32(x*32) + offsetX,
+				Y: int32(y*32) + offsetY,
+				W: 32,
+				H: 32,
+			}
 			renderer.Copy(textureAtlas, &srcRect, &destRect)
 		}
 	}
 
-	renderer.Copy(textureAtlas, &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}, &sdl.Rect{X: int32(level.Player.X * 32), Y: int32(level.Player.Y * 32), W: 32, H: 32})
+	srcRect := &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}
+	destRect := &sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
+	renderer.Copy(textureAtlas, srcRect, destRect)
 	renderer.Present()
 }
 
