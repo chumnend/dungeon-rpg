@@ -264,7 +264,7 @@ func bfs(ui UI, level *Level, start Pos) {
 
 }
 
-func astar(ui UI, level *Level, start Pos, goal Pos) {
+func astar(ui UI, level *Level, start Pos, goal Pos) []Pos {
 	queue := make(priorityQueue, 0, 8)
 	queue = append(queue, priorityPos{start, 1})
 
@@ -282,16 +282,24 @@ func astar(ui UI, level *Level, start Pos, goal Pos) {
 		current := queue[0]
 
 		if current.Pos == goal {
+			path := make([]Pos, 0)
 			p := current.Pos
 			for p != start {
-				level.Debug[p] = true
-				ui.Draw(level)
+				path = append(path, p)
 				p = from[p]
 			}
 
-			level.Debug[p] = true
-			ui.Draw(level)
-			break
+			path = append(path, p)
+			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
+				path[i], path[j] = path[j], path[i]
+			}
+
+			for _, pos := range path {
+				level.Debug[pos] = true
+				ui.Draw(level)
+			}
+
+			return path
 		}
 
 		queue = queue[1:]
@@ -307,4 +315,6 @@ func astar(ui UI, level *Level, start Pos, goal Pos) {
 			}
 		}
 	}
+
+	return nil
 }
