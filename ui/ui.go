@@ -191,7 +191,16 @@ func (ui *UI) Draw(level *game.Level) {
 				W: 32,
 				H: 32,
 			}
+
+			pos := game.Pos{X: x, Y: y}
+			if level.Debug[pos] {
+				textureAtlas.SetColorMod(128, 0, 0)
+			} else {
+				textureAtlas.SetColorMod(255, 255, 255)
+			}
+
 			renderer.Copy(textureAtlas, &srcRect, &destRect)
+
 		}
 	}
 
@@ -218,6 +227,9 @@ func (ui *UI) GetInput() *game.Input {
 			}
 			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_RIGHT {
 				return &game.Input{Type: game.Right}
+			}
+			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_S {
+				return &game.Input{Type: game.Search}
 			}
 		case *sdl.QuitEvent:
 			return &game.Input{Type: game.Quit}
