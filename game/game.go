@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"math"
 	"os"
-	"sort"
 )
 
 // UI interface
@@ -48,25 +47,6 @@ const (
 // Pos reprsents the x an y coordinate
 type Pos struct {
 	X, Y int
-}
-
-type priorityPos struct {
-	Pos
-	priority int
-}
-
-type priorityQueue []priorityPos
-
-func (p priorityQueue) Len() int {
-	return len(p)
-}
-
-func (p priorityQueue) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-func (p priorityQueue) Less(i, j int) bool {
-	return p[i].priority < p[j].priority
 }
 
 // Entity represnts an object
@@ -265,8 +245,8 @@ func bfs(ui UI, level *Level, start Pos) {
 }
 
 func astar(ui UI, level *Level, start Pos, goal Pos) []Pos {
-	queue := make(priorityQueue, 0, 8)
-	queue = append(queue, priorityPos{start, 1})
+	queue := make(posPriorityQueue, 0, 8)
+	queue = queue.push(start, 1)
 
 	from := make(map[Pos]Pos)
 	from[start] = start
@@ -276,14 +256,13 @@ func astar(ui UI, level *Level, start Pos, goal Pos) []Pos {
 
 	level.Debug = make(map[Pos]bool)
 
+	var current Pos
 	for len(queue) > 0 {
-		sort.Stable(queue) // slow priority queue, temp
+		queue, current = queue.pop()
 
-		current := queue[0]
-
-		if current.Pos == goal {
+		if current == goal {
 			path := make([]Pos, 0)
-			p := current.Pos
+			p := current
 			for p != start {
 				path = append(path, p)
 				p = from[p]
@@ -302,16 +281,15 @@ func astar(ui UI, level *Level, start Pos, goal Pos) []Pos {
 			return path
 		}
 
-		queue = queue[1:]
-		for _, neighbor := range getNeighbors(level, current.Pos) {
-			newCost := cost[current.Pos] + 1 // always 1 for now
+		for _, neighbor := range getNeighbors(level, current) {
+			newCost := cost[current] + 1 // always 1 for now
 			if _, exists := cost[neighbor]; !exists || newCost < cost[neighbor] {
 				cost[neighbor] = newCost
 				xDist := int(math.Abs(float64(goal.X - neighbor.X)))
 				yDist := int(math.Abs(float64(goal.Y - neighbor.Y)))
 				priority := newCost + xDist + yDist
-				queue = append(queue, priorityPos{neighbor, priority})
-				from[neighbor] = current.Pos
+				queue = queue.push(neighbor, priority)
+				from[neighbor] = current
 			}
 		}
 	}
