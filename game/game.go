@@ -83,13 +83,84 @@ func NewGame(numWindows int, path string) *Game {
 	return game
 }
 
+func loadLevelFromFile(filename string) *Level {
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lines := make([]string, 0)
+	longestRow := 0
+	index := 0
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+		if len(lines[index]) > longestRow {
+			longestRow = len(lines[index])
+		}
+		index++
+	}
+
+	level := &Level{}
+	level.Tiles = make([][]Tile, len(lines))
+	for i := range level.Tiles {
+		level.Tiles[i] = make([]Tile, longestRow)
+	}
+
+	for y := range level.Tiles {
+		line := lines[y]
+		for x, c := range line {
+			switch c {
+			case ' ', '\t', '\n', '\r':
+				level.Tiles[y][x] = EmptyTile
+			case '#':
+				level.Tiles[y][x] = StoneTile
+			case '|':
+				level.Tiles[y][x] = ClosedDoorTile
+			case '/':
+				level.Tiles[y][x] = OpenedDoorTile
+			case '.':
+				level.Tiles[y][x] = DirtTile
+			case 'P':
+				level.Player.X = x
+				level.Player.Y = y
+				level.Tiles[y][x] = PendingTile
+			default:
+				panic("Invalid Character: " + string(c))
+			}
+		}
+	}
+
+	for y, row := range level.Tiles {
+		for x, tile := range row {
+			if tile == PendingTile {
+			SearchLoop:
+				for searchX := x - 1; searchX <= x+1; searchX++ {
+					for searchY := y - 1; searchY <= y+1; searchY++ {
+						searchTile := level.Tiles[searchY][searchX]
+						switch searchTile {
+						case DirtTile:
+							level.Tiles[y][x] = DirtTile
+							break SearchLoop
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return level
+}
+
 // Run runs the game user interface
 func (game *Game) Run() {
 	for _, lch := range game.LevelChs {
 		lch <- game.Level
 	}
 
-	for input := range game.InputCh {
+	for {
+		input := <-game.InputCh
 		if input.Type == QuitGame {
 			return
 		}
@@ -169,102 +240,6 @@ func checkDoor(level *Level, pos Pos) {
 	}
 }
 
-func loadLevelFromFile(filename string) *Level {
-	file, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	lines := make([]string, 0)
-	longestRow := 0
-	index := 0
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-		if len(lines[index]) > longestRow {
-			longestRow = len(lines[index])
-		}
-		index++
-	}
-
-	level := &Level{}
-	level.Tiles = make([][]Tile, len(lines))
-	for i := range level.Tiles {
-		level.Tiles[i] = make([]Tile, longestRow)
-	}
-
-	for y := range level.Tiles {
-		line := lines[y]
-		for x, c := range line {
-			switch c {
-			case ' ', '\t', '\n', '\r':
-				level.Tiles[y][x] = EmptyTile
-			case '#':
-				level.Tiles[y][x] = StoneTile
-			case '|':
-				level.Tiles[y][x] = ClosedDoorTile
-			case '/':
-				level.Tiles[y][x] = OpenedDoorTile
-			case '.':
-				level.Tiles[y][x] = DirtTile
-			case 'P':
-				level.Player.X = x
-				level.Player.Y = y
-				level.Tiles[y][x] = PendingTile
-			default:
-				panic("Invalid Character: " + string(c))
-			}
-		}
-	}
-
-	for y, row := range level.Tiles {
-		for x, tile := range row {
-			if tile == PendingTile {
-			SearchLoop:
-				for searchX := x - 1; searchX <= x+1; searchX++ {
-					for searchY := y - 1; searchY <= y+1; searchY++ {
-						searchTile := level.Tiles[searchY][searchX]
-						switch searchTile {
-						case DirtTile:
-							level.Tiles[y][x] = DirtTile
-							break SearchLoop
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return level
-}
-
-func getNeighbors(level *Level, pos Pos) []Pos {
-	neighbors := make([]Pos, 0, 8)
-
-	right := Pos{X: pos.X + 1, Y: pos.Y}
-	if canWalk(level, right) {
-		neighbors = append(neighbors, right)
-	}
-
-	left := Pos{X: pos.X - 1, Y: pos.Y}
-	if canWalk(level, left) {
-		neighbors = append(neighbors, left)
-	}
-
-	up := Pos{X: pos.X, Y: pos.Y - 1}
-	if canWalk(level, up) {
-		neighbors = append(neighbors, up)
-	}
-
-	down := Pos{X: pos.X, Y: pos.Y + 1}
-	if canWalk(level, down) {
-		neighbors = append(neighbors, down)
-	}
-
-	return neighbors
-}
-
 func (game *Game) bfs(start Pos) {
 	level := game.Level
 
@@ -340,4 +315,30 @@ func (game *Game) astar(start Pos, goal Pos) []Pos {
 	}
 
 	return nil
+}
+
+func getNeighbors(level *Level, pos Pos) []Pos {
+	neighbors := make([]Pos, 0, 8)
+
+	right := Pos{X: pos.X + 1, Y: pos.Y}
+	if canWalk(level, right) {
+		neighbors = append(neighbors, right)
+	}
+
+	left := Pos{X: pos.X - 1, Y: pos.Y}
+	if canWalk(level, left) {
+		neighbors = append(neighbors, left)
+	}
+
+	up := Pos{X: pos.X, Y: pos.Y - 1}
+	if canWalk(level, up) {
+		neighbors = append(neighbors, up)
+	}
+
+	down := Pos{X: pos.X, Y: pos.Y + 1}
+	if canWalk(level, down) {
+		neighbors = append(neighbors, down)
+	}
+
+	return neighbors
 }
