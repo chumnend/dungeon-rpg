@@ -23,6 +23,7 @@ const (
 	Right
 	Quit
 	Search // temp
+	None
 )
 
 // Input represents the key board input
@@ -73,39 +74,44 @@ func Run(ui UI) {
 	for {
 		ui.Draw(level)
 		input := ui.GetInput()
-		if input != nil {
-			switch input.Type {
-			case Up:
-				if canWalk(level, Pos{level.Player.X, level.Player.Y - 1}) {
-					level.Player.Y--
-				} else {
-					checkDoor(level, Pos{level.Player.X, level.Player.Y - 1})
-				}
-			case Down:
-				if canWalk(level, Pos{level.Player.X, level.Player.Y + 1}) {
-					level.Player.Y++
-				} else {
-					checkDoor(level, Pos{level.Player.X, level.Player.Y + 1})
-				}
-			case Left:
-				if canWalk(level, Pos{level.Player.X - 1, level.Player.Y}) {
-					level.Player.X--
-				} else {
-					checkDoor(level, Pos{level.Player.X - 1, level.Player.Y})
-				}
-			case Right:
-				if canWalk(level, Pos{level.Player.X + 1, level.Player.Y}) {
-					level.Player.X++
-				} else {
-					checkDoor(level, Pos{level.Player.X + 1, level.Player.Y})
-				}
-			case Quit:
-				return
-			case Search:
-				// bfs(ui, level, level.Player.Pos)
-				astar(ui, level, level.Player.Pos, Pos{4, 2})
-			}
+
+		if input != nil && input.Type == Quit {
+			return
 		}
+
+		handleInput(ui, level, input)
+	}
+}
+
+func handleInput(ui UI, level *Level, input *Input) {
+	switch input.Type {
+	case Up:
+		if canWalk(level, Pos{level.Player.X, level.Player.Y - 1}) {
+			level.Player.Y--
+		} else {
+			checkDoor(level, Pos{level.Player.X, level.Player.Y - 1})
+		}
+	case Down:
+		if canWalk(level, Pos{level.Player.X, level.Player.Y + 1}) {
+			level.Player.Y++
+		} else {
+			checkDoor(level, Pos{level.Player.X, level.Player.Y + 1})
+		}
+	case Left:
+		if canWalk(level, Pos{level.Player.X - 1, level.Player.Y}) {
+			level.Player.X--
+		} else {
+			checkDoor(level, Pos{level.Player.X - 1, level.Player.Y})
+		}
+	case Right:
+		if canWalk(level, Pos{level.Player.X + 1, level.Player.Y}) {
+			level.Player.X++
+		} else {
+			checkDoor(level, Pos{level.Player.X + 1, level.Player.Y})
+		}
+	case Search:
+		// bfs(ui, level, level.Player.Pos)
+		astar(ui, level, level.Player.Pos, Pos{4, 2})
 	}
 }
 

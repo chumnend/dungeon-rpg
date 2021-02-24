@@ -236,5 +236,5 @@ func (ui *UI) GetInput() *game.Input {
 		}
 	}
 
-	return nil
+	return &game.Input{Type: game.None}
 }
