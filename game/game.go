@@ -36,13 +36,13 @@ type Tile rune
 
 // Enum of differetn space types
 const (
-	SpaceStone      Tile = '#'
-	SpaceDirt            = '.'
-	SpaceClosedDoor      = '|'
-	SpaceOpenedDoor      = '/'
-	SpaceBlank           = 0
-	SpacePlayer          = 'P'
-	SpacePending         = -1
+	StoneTile      Tile = '#'
+	DirtTile            = '.'
+	ClosedDoorTile      = '|'
+	OpenedDoorTile      = '/'
+	EmptyTile           = 0
+	PlayerTile          = 'P'
+	PendingTile         = -1
 )
 
 // Pos reprsents the x an y coordinate
@@ -118,7 +118,7 @@ func handleInput(ui UI, level *Level, input *Input) {
 func canWalk(level *Level, pos Pos) bool {
 	tile := level.Tiles[pos.Y][pos.X]
 	switch tile {
-	case SpaceBlank, SpaceClosedDoor, SpaceStone:
+	case EmptyTile, ClosedDoorTile, StoneTile:
 		return false
 	default:
 		return true
@@ -127,8 +127,8 @@ func canWalk(level *Level, pos Pos) bool {
 
 func checkDoor(level *Level, pos Pos) {
 	tile := level.Tiles[pos.Y][pos.X]
-	if tile == SpaceClosedDoor {
-		level.Tiles[pos.Y][pos.X] = SpaceOpenedDoor
+	if tile == ClosedDoorTile {
+		level.Tiles[pos.Y][pos.X] = OpenedDoorTile
 	}
 }
 
@@ -162,19 +162,19 @@ func loadLevelFromFile(filename string) *Level {
 		for x, c := range line {
 			switch c {
 			case ' ', '\t', '\n', '\r':
-				level.Tiles[y][x] = SpaceBlank
+				level.Tiles[y][x] = EmptyTile
 			case '#':
-				level.Tiles[y][x] = SpaceStone
+				level.Tiles[y][x] = StoneTile
 			case '|':
-				level.Tiles[y][x] = SpaceClosedDoor
+				level.Tiles[y][x] = ClosedDoorTile
 			case '/':
-				level.Tiles[y][x] = SpaceOpenedDoor
+				level.Tiles[y][x] = OpenedDoorTile
 			case '.':
-				level.Tiles[y][x] = SpaceDirt
+				level.Tiles[y][x] = DirtTile
 			case 'P':
 				level.Player.X = x
 				level.Player.Y = y
-				level.Tiles[y][x] = SpacePending
+				level.Tiles[y][x] = PendingTile
 			default:
 				panic("Invalid Character: " + string(c))
 			}
@@ -183,14 +183,14 @@ func loadLevelFromFile(filename string) *Level {
 
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			if tile == SpacePending {
+			if tile == PendingTile {
 			SearchLoop:
 				for searchX := x - 1; searchX <= x+1; searchX++ {
 					for searchY := y - 1; searchY <= y+1; searchY++ {
 						searchTile := level.Tiles[searchY][searchX]
 						switch searchTile {
-						case SpaceDirt:
-							level.Tiles[y][x] = SpaceDirt
+						case DirtTile:
+							level.Tiles[y][x] = DirtTile
 							break SearchLoop
 						}
 					}
