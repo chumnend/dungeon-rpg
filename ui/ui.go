@@ -2,7 +2,6 @@ package ui
 
 import (
 	"bufio"
-	"fmt"
 	"image/png"
 	"math/rand"
 	"os"
@@ -13,20 +12,109 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-const (
-	windowWidth  = 1280
-	windowHeight = 720
-)
+func init() {
+	err := sdl.Init(sdl.INIT_EVERYTHING)
+	if err != nil {
+		panic(err)
+	}
+}
 
-var window *sdl.Window
-var renderer *sdl.Renderer
-var textureAtlas *sdl.Texture
-var textureIndex map[game.Tile][]sdl.Rect
+// App represents the application window that runs the RPG game
+type App struct {
+	width   int32
+	height  int32
+	centerX int
+	centerY int
 
-var centerX int
-var centerY int
+	window       *sdl.Window
+	renderer     *sdl.Renderer
+	textureAtlas *sdl.Texture
+	textureIndex map[game.Tile][]sdl.Rect
 
-func imgFileToTexture(filename string) *sdl.Texture {
+	levelCh chan *game.Level
+	inputCh chan *game.Input
+
+	r *rand.Rand
+}
+
+// NewApp returns an App struct
+func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
+	app := new(App)
+	app.width = 1280
+	app.height = 730
+	app.centerX = -1
+	app.centerY = -1
+
+	var err error
+
+	app.window, err = sdl.CreateWindow("RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1280, 720, sdl.WINDOW_SHOWN)
+	if err != nil {
+		panic(err)
+	}
+
+	app.renderer, err = sdl.CreateRenderer(app.window, -1, sdl.RENDERER_ACCELERATED)
+	if err != nil {
+		panic(err)
+	}
+
+	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
+
+	app.textureAtlas = app.imgFileToTexture("ui/assets/tiles.png")
+	app.loadTextureIndex()
+
+	app.levelCh = levelCh
+	app.inputCh = inputCh
+
+	app.r = rand.New(rand.NewSource(1))
+
+	return app
+}
+
+// Run starts the application window
+func (a *App) Run() {
+	for {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch e := event.(type) {
+			case *sdl.QuitEvent:
+				a.inputCh <- &game.Input{Type: game.QuitGame}
+			case *sdl.WindowEvent:
+				if e.Event == sdl.WINDOWEVENT_CLOSE {
+					a.inputCh <- &game.Input{Type: game.CloseWindow, LevelCh: a.levelCh}
+				}
+			case *sdl.KeyboardEvent:
+				code := e.Keysym.Scancode
+				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_UP {
+					a.inputCh <- &game.Input{Type: game.Up}
+				}
+				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_DOWN {
+					a.inputCh <- &game.Input{Type: game.Down}
+				}
+				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_LEFT {
+					a.inputCh <- &game.Input{Type: game.Left}
+				}
+				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_RIGHT {
+					a.inputCh <- &game.Input{Type: game.Right}
+				}
+				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_S {
+					a.inputCh <- &game.Input{Type: game.Search}
+				}
+			}
+		}
+
+		select {
+		case newLevel, ok := <-a.levelCh:
+			if ok {
+				a.draw(newLevel)
+			}
+		default:
+			// do nothing
+		}
+
+		sdl.Delay(10)
+	}
+}
+
+func (a *App) imgFileToTexture(filename string) *sdl.Texture {
 	file, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -57,7 +145,7 @@ func imgFileToTexture(filename string) *sdl.Texture {
 		}
 	}
 
-	tex, err := renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STATIC, int32(w), int32(h))
+	tex, err := a.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STATIC, int32(w), int32(h))
 	if err != nil {
 		panic(err)
 	}
@@ -72,8 +160,8 @@ func imgFileToTexture(filename string) *sdl.Texture {
 	return tex
 }
 
-func loadTextureIndex() {
-	textureIndex = make(map[game.Tile][]sdl.Rect)
+func (a *App) loadTextureIndex() {
+	a.textureIndex = make(map[game.Tile][]sdl.Rect)
 
 	file, err := os.Open("ui/assets/atlas-index.txt")
 	if err != nil {
@@ -114,77 +202,44 @@ func loadTextureIndex() {
 		}
 
 		// rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
-		textureIndex[tile] = rects
+		a.textureIndex[tile] = rects
 	}
-}
-
-func init() {
-	err := sdl.Init(sdl.INIT_EVERYTHING)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	window, err = sdl.CreateWindow("Simple RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, windowWidth, windowHeight, sdl.WINDOW_SHOWN)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
-
-	textureAtlas = imgFileToTexture("ui/assets/tiles.png")
-	loadTextureIndex()
-
-	centerX = -1
-	centerY = -1
-}
-
-// UI struct represents the user interface for the game
-type UI struct {
-	game.UI
 }
 
 // Draw draws a level for the game
-func (ui *UI) Draw(level *game.Level) {
-	rand.Seed(1)
-	renderer.Clear()
-
-	if centerX == -1 {
-		centerX = level.Player.X
-		centerY = level.Player.Y
+func (a *App) draw(level *game.Level) {
+	if a.centerX == -1 {
+		a.centerX = level.Player.X
+		a.centerY = level.Player.Y
 	}
 
 	limit := 5
-	if level.Player.X > centerX+limit {
-		centerX++
-	} else if level.Player.X < centerX-limit {
-		centerX--
+	if level.Player.X > a.centerX+limit {
+		a.centerX++
+	} else if level.Player.X < a.centerX-limit {
+		a.centerX--
 	}
 
-	if level.Player.Y > centerY+limit {
-		centerY++
-	} else if level.Player.Y < centerY-limit {
-		centerY--
+	if level.Player.Y > a.centerY+limit {
+		a.centerY++
+	} else if level.Player.Y < a.centerY-limit {
+		a.centerY--
 	}
 
-	offsetX := int32((windowWidth / 2) - centerX*32)
-	offsetY := int32((windowHeight / 2) - centerY*32)
+	offsetX := (a.width / 2) - int32(a.centerX*32)
+	offsetY := (a.height / 2) - int32(a.centerY*32)
+
+	a.r.Seed(1)
+	a.renderer.Clear()
 
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			if tile == game.SpaceBlank {
+			if tile == game.EmptyTile {
 				continue
 			}
 
-			srcRects := textureIndex[tile]
-			srcRect := srcRects[rand.Intn(len(srcRects))]
+			srcRects := a.textureIndex[tile]
+			srcRect := srcRects[a.r.Intn(len(srcRects))]
 			destRect := sdl.Rect{
 				X: int32(x*32) + offsetX,
 				Y: int32(y*32) + offsetY,
@@ -194,47 +249,17 @@ func (ui *UI) Draw(level *game.Level) {
 
 			pos := game.Pos{X: x, Y: y}
 			if level.Debug[pos] {
-				textureAtlas.SetColorMod(128, 0, 0)
+				a.textureAtlas.SetColorMod(128, 0, 0)
 			} else {
-				textureAtlas.SetColorMod(255, 255, 255)
+				a.textureAtlas.SetColorMod(255, 255, 255)
 			}
 
-			renderer.Copy(textureAtlas, &srcRect, &destRect)
-
+			a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
 		}
 	}
 
 	srcRect := &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}
 	destRect := &sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
-	renderer.Copy(textureAtlas, srcRect, destRect)
-	renderer.Present()
-}
-
-// GetInput returns an input state for the game
-func (ui *UI) GetInput() *game.Input {
-	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch e := event.(type) {
-		case *sdl.KeyboardEvent:
-			code := e.Keysym.Scancode
-			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_UP {
-				return &game.Input{Type: game.Up}
-			}
-			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_DOWN {
-				return &game.Input{Type: game.Down}
-			}
-			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_LEFT {
-				return &game.Input{Type: game.Left}
-			}
-			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_RIGHT {
-				return &game.Input{Type: game.Right}
-			}
-			if e.Type == sdl.KEYUP && code == sdl.SCANCODE_S {
-				return &game.Input{Type: game.Search}
-			}
-		case *sdl.QuitEvent:
-			return &game.Input{Type: game.Quit}
-		}
-	}
-
-	return &game.Input{Type: game.None}
+	a.renderer.Copy(a.textureAtlas, srcRect, destRect)
+	a.renderer.Present()
 }

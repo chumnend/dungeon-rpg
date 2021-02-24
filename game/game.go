@@ -6,29 +6,24 @@ import (
 	"os"
 )
 
-// UI interface
-type UI interface {
-	Draw(*Level)
-	GetInput() *Input
-}
-
 // InputType used for input enumeration
 type InputType int
 
 // Input Enum for getting input for the game
 const (
-	Up InputType = iota
+	QuitGame InputType = iota
+	CloseWindow
+	Up
 	Down
 	Left
 	Right
-	Quit
 	Search // temp
-	None
 )
 
 // Input represents the key board input
 type Input struct {
-	Type InputType
+	Type    InputType
+	LevelCh chan *Level
 }
 
 // Tile represents the representation of an element in a map
@@ -67,23 +62,53 @@ type Level struct {
 	Debug  map[Pos]bool
 }
 
+// Game represents the RPG game state
+type Game struct {
+	LevelChs []chan *Level
+	InputCh  chan *Input
+	Level    *Level
+}
+
+// NewGame creates a new Game struct
+func NewGame(numWindows int, path string) *Game {
+	game := new(Game)
+
+	game.LevelChs = make([]chan *Level, numWindows)
+	for i := range game.LevelChs {
+		game.LevelChs[i] = make(chan *Level)
+	}
+	game.InputCh = make(chan *Input)
+	game.Level = loadLevelFromFile(path)
+
+	return game
+}
+
 // Run runs the game user interface
-func Run(ui UI) {
-	level := loadLevelFromFile("game/maps/level1.map")
+func (game *Game) Run() {
+	for _, lch := range game.LevelChs {
+		lch <- game.Level
+	}
 
-	for {
-		ui.Draw(level)
-		input := ui.GetInput()
-
-		if input != nil && input.Type == Quit {
+	for input := range game.InputCh {
+		if input.Type == QuitGame {
 			return
 		}
 
-		handleInput(ui, level, input)
+		game.handleInput(input)
+
+		if len(game.LevelChs) == 0 {
+			return
+		}
+
+		for _, lch := range game.LevelChs {
+			lch <- game.Level
+		}
 	}
 }
 
-func handleInput(ui UI, level *Level, input *Input) {
+func (game *Game) handleInput(input *Input) {
+	level := game.Level
+
 	switch input.Type {
 	case Up:
 		if canWalk(level, Pos{level.Player.X, level.Player.Y - 1}) {
@@ -110,9 +135,21 @@ func handleInput(ui UI, level *Level, input *Input) {
 			checkDoor(level, Pos{level.Player.X + 1, level.Player.Y})
 		}
 	case Search:
-		// bfs(ui, level, level.Player.Pos)
-		astar(ui, level, level.Player.Pos, Pos{4, 2})
+		//game.bfs(ui, level, level.Player.Pos)
+		game.astar(level.Player.Pos, Pos{4, 2})
+	case CloseWindow:
+		close(input.LevelCh)
+		chanIdx := 0
+		for i, c := range game.LevelChs {
+			if c == input.LevelCh {
+				chanIdx = i
+				break
+			}
+		}
+
+		game.LevelChs = append(game.LevelChs[:chanIdx], game.LevelChs[chanIdx+1:]...)
 	}
+
 }
 
 func canWalk(level *Level, pos Pos) bool {
@@ -228,7 +265,9 @@ func getNeighbors(level *Level, pos Pos) []Pos {
 	return neighbors
 }
 
-func bfs(ui UI, level *Level, start Pos) {
+func (game *Game) bfs(start Pos) {
+	level := game.Level
+
 	queue := make([]Pos, 0, 8)
 	queue = append(queue, start)
 	visited := make(map[Pos]bool)
@@ -243,14 +282,15 @@ func bfs(ui UI, level *Level, start Pos) {
 			if !visited[neighbor] {
 				queue = append(queue, neighbor)
 				visited[neighbor] = true
-				ui.Draw(level)
 			}
 		}
 	}
 
 }
 
-func astar(ui UI, level *Level, start Pos, goal Pos) []Pos {
+func (game *Game) astar(start Pos, goal Pos) []Pos {
+	level := game.Level
+
 	queue := make(posPriorityQueue, 0, 8)
 	queue = queue.push(start, 1)
 
@@ -281,7 +321,6 @@ func astar(ui UI, level *Level, start Pos, goal Pos) []Pos {
 
 			for _, pos := range path {
 				level.Debug[pos] = true
-				ui.Draw(level)
 			}
 
 			return path
