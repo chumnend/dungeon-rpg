@@ -114,6 +114,63 @@ func (a *App) Run() {
 	}
 }
 
+func (a *App) draw(level *game.Level) {
+	if a.centerX == -1 {
+		a.centerX = level.Player.X
+		a.centerY = level.Player.Y
+	}
+
+	limit := 5
+	if level.Player.X > a.centerX+limit {
+		a.centerX++
+	} else if level.Player.X < a.centerX-limit {
+		a.centerX--
+	}
+
+	if level.Player.Y > a.centerY+limit {
+		a.centerY++
+	} else if level.Player.Y < a.centerY-limit {
+		a.centerY--
+	}
+
+	offsetX := (a.width / 2) - int32(a.centerX*32)
+	offsetY := (a.height / 2) - int32(a.centerY*32)
+
+	a.r.Seed(1)
+	a.renderer.Clear()
+
+	for y, row := range level.Tiles {
+		for x, tile := range row {
+			if tile == game.EmptyTile {
+				continue
+			}
+
+			srcRects := a.textureIndex[tile]
+			srcRect := srcRects[a.r.Intn(len(srcRects))]
+			destRect := sdl.Rect{
+				X: int32(x*32) + offsetX,
+				Y: int32(y*32) + offsetY,
+				W: 32,
+				H: 32,
+			}
+
+			pos := game.Pos{X: x, Y: y}
+			if level.Debug[pos] {
+				a.textureAtlas.SetColorMod(128, 0, 0)
+			} else {
+				a.textureAtlas.SetColorMod(255, 255, 255)
+			}
+
+			a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+		}
+	}
+
+	srcRect := &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}
+	destRect := &sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
+	a.renderer.Copy(a.textureAtlas, srcRect, destRect)
+	a.renderer.Present()
+}
+
 func (a *App) imgFileToTexture(filename string) *sdl.Texture {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -204,62 +261,4 @@ func (a *App) loadTextureIndex() {
 		// rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
 		a.textureIndex[tile] = rects
 	}
-}
-
-// Draw draws a level for the game
-func (a *App) draw(level *game.Level) {
-	if a.centerX == -1 {
-		a.centerX = level.Player.X
-		a.centerY = level.Player.Y
-	}
-
-	limit := 5
-	if level.Player.X > a.centerX+limit {
-		a.centerX++
-	} else if level.Player.X < a.centerX-limit {
-		a.centerX--
-	}
-
-	if level.Player.Y > a.centerY+limit {
-		a.centerY++
-	} else if level.Player.Y < a.centerY-limit {
-		a.centerY--
-	}
-
-	offsetX := (a.width / 2) - int32(a.centerX*32)
-	offsetY := (a.height / 2) - int32(a.centerY*32)
-
-	a.r.Seed(1)
-	a.renderer.Clear()
-
-	for y, row := range level.Tiles {
-		for x, tile := range row {
-			if tile == game.EmptyTile {
-				continue
-			}
-
-			srcRects := a.textureIndex[tile]
-			srcRect := srcRects[a.r.Intn(len(srcRects))]
-			destRect := sdl.Rect{
-				X: int32(x*32) + offsetX,
-				Y: int32(y*32) + offsetY,
-				W: 32,
-				H: 32,
-			}
-
-			pos := game.Pos{X: x, Y: y}
-			if level.Debug[pos] {
-				a.textureAtlas.SetColorMod(128, 0, 0)
-			} else {
-				a.textureAtlas.SetColorMod(255, 255, 255)
-			}
-
-			a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
-		}
-	}
-
-	srcRect := &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}
-	destRect := &sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
-	a.renderer.Copy(a.textureAtlas, srcRect, destRect)
-	a.renderer.Present()
 }
