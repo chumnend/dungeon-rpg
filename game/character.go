@@ -9,7 +9,7 @@ type Character struct {
 	ActionPoints float64
 }
 
-// Attack ...
+// Attack makes c1 initiate attack on c2
 func Attack(c1, c2 *Character) {
 	c2.Hitpoints -= c1.Damage
 
