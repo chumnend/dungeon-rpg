@@ -47,7 +47,10 @@ func (m *Monster) Update(level *Level) {
 
 // Move moves the monster to a given position
 func (m *Monster) Move(level *Level, to Pos) {
-	delete(level.Monsters, m.Pos)
-	level.Monsters[to] = m
-	m.Pos = to
+	// check if valid tile
+	if _, exists := level.Monsters[to]; !exists && to != level.Player.Pos {
+		delete(level.Monsters, m.Pos)
+		level.Monsters[to] = m
+		m.Pos = to
+	}
 }

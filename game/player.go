@@ -14,3 +14,11 @@ func NewPlayer(p Pos) *Player {
 		Symbol: '@',
 	}
 }
+
+// Move moves the player to a new position
+func (p *Player) Move(level *Level, to Pos) {
+	// check if valid tile
+	if _, exists := level.Monsters[to]; !exists {
+		p.Pos = to
+	}
+}

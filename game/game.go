@@ -76,34 +76,23 @@ func (game *Game) Run() {
 
 func (game *Game) handleInput(input *Input) {
 	level := game.Level
+	var pos Pos
+	newPos := false
 
 	switch input.Type {
 	case Up:
-		if level.canWalk(Pos{level.Player.X, level.Player.Y - 1}) {
-			level.Player.Y--
-		} else {
-			level.checkDoor(Pos{level.Player.X, level.Player.Y - 1})
-		}
+		pos = Pos{level.Player.X, level.Player.Y - 1}
+		newPos = true
 	case Down:
-		if level.canWalk(Pos{level.Player.X, level.Player.Y + 1}) {
-			level.Player.Y++
-		} else {
-			level.checkDoor(Pos{level.Player.X, level.Player.Y + 1})
-		}
+		pos = Pos{level.Player.X, level.Player.Y + 1}
+		newPos = true
 	case Left:
-		if level.canWalk(Pos{level.Player.X - 1, level.Player.Y}) {
-			level.Player.X--
-		} else {
-			level.checkDoor(Pos{level.Player.X - 1, level.Player.Y})
-		}
+		pos = Pos{level.Player.X - 1, level.Player.Y}
+		newPos = true
 	case Right:
-		if level.canWalk(Pos{level.Player.X + 1, level.Player.Y}) {
-			level.Player.X++
-		} else {
-			level.checkDoor(Pos{level.Player.X + 1, level.Player.Y})
-		}
+		pos = Pos{level.Player.X + 1, level.Player.Y}
+		newPos = true
 	case Search:
-		//game.bfs(ui, level, level.Player.Pos)
 		level.astar(level.Player.Pos, Pos{4, 2})
 	case CloseWindow:
 		close(input.LevelCh)
@@ -118,4 +107,11 @@ func (game *Game) handleInput(input *Input) {
 		game.LevelChs = append(game.LevelChs[:chanIdx], game.LevelChs[chanIdx+1:]...)
 	}
 
+	if newPos {
+		if level.canWalk(pos) {
+			level.Player.Move(level, pos)
+		} else {
+			level.checkDoor(pos)
+		}
+	}
 }

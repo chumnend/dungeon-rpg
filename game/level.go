@@ -157,8 +157,6 @@ func (level *Level) astar(start Pos, goal Pos) []Pos {
 	cost := make(map[Pos]int)
 	cost[start] = 0
 
-	level.Debug = make(map[Pos]bool)
-
 	var current Pos
 	for len(queue) > 0 {
 		queue, current = queue.pop()
@@ -174,10 +172,6 @@ func (level *Level) astar(start Pos, goal Pos) []Pos {
 			path = append(path, p)
 			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
 				path[i], path[j] = path[j], path[i]
-			}
-
-			for _, pos := range path {
-				level.Debug[pos] = true
 			}
 
 			return path
