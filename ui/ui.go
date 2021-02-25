@@ -77,10 +77,6 @@ func (a *App) Run() {
 			switch e := event.(type) {
 			case *sdl.QuitEvent:
 				a.inputCh <- &game.Input{Type: game.QuitGame}
-			case *sdl.WindowEvent:
-				if e.Event == sdl.WINDOWEVENT_CLOSE {
-					a.inputCh <- &game.Input{Type: game.CloseWindow, LevelCh: a.levelCh}
-				}
 			case *sdl.KeyboardEvent:
 				var input game.Input
 

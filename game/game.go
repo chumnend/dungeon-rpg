@@ -6,7 +6,6 @@ type InputType int
 // Input Enum for getting input for the game
 const (
 	QuitGame InputType = iota
-	CloseWindow
 	Up
 	Down
 	Left
@@ -16,8 +15,7 @@ const (
 
 // Input represents the key board input
 type Input struct {
-	Type    InputType
-	LevelCh chan *Level
+	Type InputType
 }
 
 // Pos reprsents the x an y coordinate
@@ -27,19 +25,16 @@ type Pos struct {
 
 // Game represents the RPG game state
 type Game struct {
-	LevelChs []chan *Level
-	InputCh  chan *Input
-	Level    *Level
+	LevelCh chan *Level
+	InputCh chan *Input
+	Level   *Level
 }
 
 // NewGame creates a new Game struct
 func NewGame(numWindows int, path string) *Game {
 	game := new(Game)
 
-	game.LevelChs = make([]chan *Level, numWindows)
-	for i := range game.LevelChs {
-		game.LevelChs[i] = make(chan *Level)
-	}
+	game.LevelCh = make(chan *Level)
 	game.InputCh = make(chan *Input)
 	game.Level = loadLevelFromFile(path)
 
@@ -48,9 +43,7 @@ func NewGame(numWindows int, path string) *Game {
 
 // Run runs the game user interface
 func (game *Game) Run() {
-	for _, lch := range game.LevelChs {
-		lch <- game.Level
-	}
+	game.LevelCh <- game.Level
 
 	for {
 		input := <-game.InputCh
@@ -64,13 +57,7 @@ func (game *Game) Run() {
 			monster.Update(game.Level)
 		}
 
-		if len(game.LevelChs) == 0 {
-			return
-		}
-
-		for _, lch := range game.LevelChs {
-			lch <- game.Level
-		}
+		game.LevelCh <- game.Level
 	}
 }
 
@@ -94,17 +81,6 @@ func (game *Game) handleInput(input *Input) {
 		newPos = true
 	case Search:
 		level.astar(level.Player.Pos, Pos{4, 2})
-	case CloseWindow:
-		close(input.LevelCh)
-		chanIdx := 0
-		for i, c := range game.LevelChs {
-			if c == input.LevelCh {
-				chanIdx = i
-				break
-			}
-		}
-
-		game.LevelChs = append(game.LevelChs[:chanIdx], game.LevelChs[chanIdx+1:]...)
 	}
 
 	if newPos {
