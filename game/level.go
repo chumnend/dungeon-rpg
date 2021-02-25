@@ -48,8 +48,8 @@ func loadLevelFromFile(filename string) *Level {
 	}
 
 	level := &Level{}
-	level.Tiles = make([][]Tile, len(lines))
 	level.Monsters = make(map[Pos]*Monster)
+	level.Tiles = make([][]Tile, len(lines))
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)
 	}
@@ -91,17 +91,8 @@ func loadLevelFromFile(filename string) *Level {
 	for y, row := range level.Tiles {
 		for x, tile := range row {
 			if tile == PendingTile {
-			SearchLoop:
-				for searchX := x - 1; searchX <= x+1; searchX++ {
-					for searchY := y - 1; searchY <= y+1; searchY++ {
-						searchTile := level.Tiles[searchY][searchX]
-						switch searchTile {
-						case DirtTile:
-							level.Tiles[y][x] = DirtTile
-							break SearchLoop
-						}
-					}
-				}
+				searchPos := Pos{x, y}
+				level.Tiles[y][x] = level.searchTile(searchPos)
 			}
 		}
 	}
@@ -109,7 +100,15 @@ func loadLevelFromFile(filename string) *Level {
 	return level
 }
 
+func (level *Level) inRange(pos Pos) bool {
+	return pos.X < len(level.Tiles[0]) && pos.Y < len(level.Tiles) && pos.X >= 0 && pos.Y >= 0
+}
+
 func (level *Level) canWalk(pos Pos) bool {
+	if !level.inRange(pos) {
+		return false
+	}
+
 	tile := level.Tiles[pos.Y][pos.X]
 	switch tile {
 	case EmptyTile, ClosedDoorTile, StoneTile:
@@ -126,7 +125,8 @@ func (level *Level) checkDoor(pos Pos) {
 	}
 }
 
-func (level *Level) bfs(start Pos) {
+func (level *Level) searchTile(start Pos) Tile {
+	// utilizes BFS
 	queue := make([]Pos, 0, 8)
 	queue = append(queue, start)
 	visited := make(map[Pos]bool)
@@ -135,6 +135,14 @@ func (level *Level) bfs(start Pos) {
 
 	for len(queue) > 0 {
 		current := queue[0]
+		currentTile := level.Tiles[current.Y][current.X]
+		switch currentTile {
+		case DirtTile:
+			return DirtTile
+		default:
+			// do nothing
+		}
+
 		queue = queue[1:]
 
 		for _, neighbor := range level.getNeighbors(current) {
@@ -145,6 +153,7 @@ func (level *Level) bfs(start Pos) {
 		}
 	}
 
+	return DirtTile
 }
 
 func (level *Level) astar(start Pos, goal Pos) []Pos {
