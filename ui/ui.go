@@ -261,7 +261,7 @@ func (a *App) draw(level *game.Level) {
 	}
 
 	// draw player
-	playerSrcRect := a.textureIndex['@'][0]
+	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
 	playerDestRect := sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
 	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &playerDestRect)
 
