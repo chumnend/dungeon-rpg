@@ -31,7 +31,7 @@ type Game struct {
 }
 
 // NewGame creates a new Game struct
-func NewGame(numWindows int, path string) *Game {
+func NewGame(path string) *Game {
 	game := new(Game)
 
 	game.LevelCh = make(chan *Level)
