@@ -131,7 +131,6 @@ func (level *Level) searchTile(start Pos) Tile {
 	queue = append(queue, start)
 	visited := make(map[Pos]bool)
 	visited[start] = true
-	level.Debug = visited
 
 	for len(queue) > 0 {
 		current := queue[0]
