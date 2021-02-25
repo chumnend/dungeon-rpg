@@ -36,7 +36,7 @@ const (
 	ClosedDoorTile      = '|'
 	OpenedDoorTile      = '/'
 	EmptyTile           = 0
-	PlayerTile          = 'P'
+	PlayerTile          = '@'
 	PendingTile         = -1
 )
 
@@ -57,9 +57,10 @@ type Player struct {
 
 // Level represents the mapping of a level
 type Level struct {
-	Tiles  [][]Tile
-	Player Player
-	Debug  map[Pos]bool
+	Tiles    [][]Tile
+	Player   Player
+	Monsters map[Pos]*Monster
+	Debug    map[Pos]bool
 }
 
 // Game represents the RPG game state
@@ -104,6 +105,8 @@ func loadLevelFromFile(filename string) *Level {
 
 	level := &Level{}
 	level.Tiles = make([][]Tile, len(lines))
+	level.Monsters = make(map[Pos]*Monster)
+
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)
 	}
@@ -111,24 +114,34 @@ func loadLevelFromFile(filename string) *Level {
 	for y := range level.Tiles {
 		line := lines[y]
 		for x, c := range line {
+			t := level.Tiles[y][x]
+
 			switch c {
 			case ' ', '\t', '\n', '\r':
-				level.Tiles[y][x] = EmptyTile
+				t = EmptyTile
 			case '#':
-				level.Tiles[y][x] = StoneTile
+				t = StoneTile
 			case '|':
-				level.Tiles[y][x] = ClosedDoorTile
+				t = ClosedDoorTile
 			case '/':
-				level.Tiles[y][x] = OpenedDoorTile
+				t = OpenedDoorTile
 			case '.':
-				level.Tiles[y][x] = DirtTile
-			case 'P':
+				t = DirtTile
+			case '@':
 				level.Player.X = x
 				level.Player.Y = y
-				level.Tiles[y][x] = PendingTile
+				t = PendingTile
+			case 'R':
+				level.Monsters[Pos{x, y}] = NewRat()
+				t = PendingTile
+			case 'S':
+				level.Monsters[Pos{x, y}] = NewSpider()
+				t = PendingTile
 			default:
 				panic("Invalid Character: " + string(c))
 			}
+
+			level.Tiles[y][x] = t
 		}
 	}
 

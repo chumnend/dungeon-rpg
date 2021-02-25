@@ -82,21 +82,23 @@ func (a *App) Run() {
 					a.inputCh <- &game.Input{Type: game.CloseWindow, LevelCh: a.levelCh}
 				}
 			case *sdl.KeyboardEvent:
-				code := e.Keysym.Scancode
-				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_UP {
-					a.inputCh <- &game.Input{Type: game.Up}
-				}
-				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_DOWN {
-					a.inputCh <- &game.Input{Type: game.Down}
-				}
-				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_LEFT {
-					a.inputCh <- &game.Input{Type: game.Left}
-				}
-				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_RIGHT {
-					a.inputCh <- &game.Input{Type: game.Right}
-				}
-				if e.Type == sdl.KEYUP && code == sdl.SCANCODE_S {
-					a.inputCh <- &game.Input{Type: game.Search}
+				var input game.Input
+
+				if e.Type == sdl.KEYUP {
+					switch e.Keysym.Scancode {
+					case sdl.SCANCODE_UP:
+						input.Type = game.Up
+					case sdl.SCANCODE_DOWN:
+						input.Type = game.Down
+					case sdl.SCANCODE_LEFT:
+						input.Type = game.Left
+					case sdl.SCANCODE_RIGHT:
+						input.Type = game.Right
+					case sdl.SCANCODE_S:
+						input.Type = game.Search
+					}
+
+					a.inputCh <- &input
 				}
 			}
 		}
@@ -112,63 +114,6 @@ func (a *App) Run() {
 
 		sdl.Delay(10)
 	}
-}
-
-func (a *App) draw(level *game.Level) {
-	if a.centerX == -1 {
-		a.centerX = level.Player.X
-		a.centerY = level.Player.Y
-	}
-
-	limit := 5
-	if level.Player.X > a.centerX+limit {
-		a.centerX++
-	} else if level.Player.X < a.centerX-limit {
-		a.centerX--
-	}
-
-	if level.Player.Y > a.centerY+limit {
-		a.centerY++
-	} else if level.Player.Y < a.centerY-limit {
-		a.centerY--
-	}
-
-	offsetX := (a.width / 2) - int32(a.centerX*32)
-	offsetY := (a.height / 2) - int32(a.centerY*32)
-
-	a.r.Seed(1)
-	a.renderer.Clear()
-
-	for y, row := range level.Tiles {
-		for x, tile := range row {
-			if tile == game.EmptyTile {
-				continue
-			}
-
-			srcRects := a.textureIndex[tile]
-			srcRect := srcRects[a.r.Intn(len(srcRects))]
-			destRect := sdl.Rect{
-				X: int32(x*32) + offsetX,
-				Y: int32(y*32) + offsetY,
-				W: 32,
-				H: 32,
-			}
-
-			pos := game.Pos{X: x, Y: y}
-			if level.Debug[pos] {
-				a.textureAtlas.SetColorMod(128, 0, 0)
-			} else {
-				a.textureAtlas.SetColorMod(255, 255, 255)
-			}
-
-			a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
-		}
-	}
-
-	srcRect := &sdl.Rect{X: 21 * 32, Y: 59 * 32, W: 32, H: 32}
-	destRect := &sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
-	a.renderer.Copy(a.textureAtlas, srcRect, destRect)
-	a.renderer.Present()
 }
 
 func (a *App) imgFileToTexture(filename string) *sdl.Texture {
@@ -261,4 +206,71 @@ func (a *App) loadTextureIndex() {
 		// rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
 		a.textureIndex[tile] = rects
 	}
+}
+
+func (a *App) draw(level *game.Level) {
+	a.r.Seed(1)
+	a.renderer.Clear()
+	if a.centerX == -1 {
+		a.centerX = level.Player.X
+		a.centerY = level.Player.Y
+	}
+
+	// move the camera with the player
+	limit := 5
+	if level.Player.X > a.centerX+limit {
+		a.centerX++
+	} else if level.Player.X < a.centerX-limit {
+		a.centerX--
+	}
+
+	if level.Player.Y > a.centerY+limit {
+		a.centerY++
+	} else if level.Player.Y < a.centerY-limit {
+		a.centerY--
+	}
+
+	offsetX := (a.width / 2) - int32(a.centerX*32)
+	offsetY := (a.height / 2) - int32(a.centerY*32)
+
+	// draw floor tiles
+	for y, row := range level.Tiles {
+		for x, tile := range row {
+			if tile == game.EmptyTile {
+				continue
+			}
+
+			srcRects := a.textureIndex[tile]
+			srcRect := srcRects[a.r.Intn(len(srcRects))]
+			destRect := sdl.Rect{
+				X: int32(x*32) + offsetX,
+				Y: int32(y*32) + offsetY,
+				W: 32,
+				H: 32,
+			}
+
+			pos := game.Pos{X: x, Y: y}
+			if level.Debug[pos] {
+				a.textureAtlas.SetColorMod(128, 0, 0)
+			} else {
+				a.textureAtlas.SetColorMod(255, 255, 255)
+			}
+
+			a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+		}
+	}
+
+	// draw player
+	playerSrcRect := a.textureIndex['@'][0]
+	playerDestRect := sdl.Rect{X: int32(level.Player.X*32) + offsetX, Y: int32(level.Player.Y*32) + offsetY, W: 32, H: 32}
+	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &playerDestRect)
+
+	// draw monsters
+	for pos, monster := range level.Monsters {
+		monsterSrcRect := a.textureIndex[monster.Symbol][0]
+		monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+		a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
+	}
+
+	a.renderer.Present()
 }
