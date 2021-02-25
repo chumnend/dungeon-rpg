@@ -23,6 +23,13 @@ type Pos struct {
 	X, Y int
 }
 
+// Entity represents the identity of game entity (ie. player, monsters, items)
+type Entity struct {
+	Pos
+	Name   string
+	Symbol Tile
+}
+
 // Game represents the RPG game state
 type Game struct {
 	LevelCh chan *Level
@@ -53,8 +60,11 @@ func (game *Game) Run() {
 
 		game.handleInput(input)
 
-		for _, monster := range game.Level.Monsters {
+		for pos, monster := range game.Level.Monsters {
 			monster.Update(game.Level)
+			if monster.Hitpoints <= 0 {
+				delete(game.Level.Monsters, pos)
+			}
 		}
 
 		game.LevelCh <- game.Level
