@@ -35,16 +35,19 @@ type App struct {
 	centerX int
 	centerY int
 
+	r *rand.Rand
+
 	window       *sdl.Window
 	renderer     *sdl.Renderer
 	textureAtlas *sdl.Texture
+
 	textureIndex map[game.Tile][]sdl.Rect
+	fontSmall    *ttf.Font
+	fontMedium   *ttf.Font
+	fontLarge    *ttf.Font
 
 	levelCh chan *game.Level
 	inputCh chan *game.Input
-
-	r          *rand.Rand
-	helloWorld *sdl.Texture
 }
 
 // NewApp returns an App struct
@@ -77,21 +80,21 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 
 	app.r = rand.New(rand.NewSource(1))
 
-	font, err := ttf.OpenFont("ui/assets/Kingthings.ttf", 32)
+	app.fontSmall, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 24)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
-	defer font.Close()
 
-	solid, err := font.RenderUTF8Solid("Hello World", sdl.Color{255, 0, 0, 0})
+	app.fontMedium, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 32)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
-	defer solid.Free()
 
-	app.helloWorld, err = app.renderer.CreateTextureFromSurface(solid)
+	app.fontLarge, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 64)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
@@ -232,6 +235,39 @@ func (a *App) loadTextureIndex() {
 	}
 }
 
+type FontSize int
+
+const (
+	FontSmall FontSize = iota
+	FontMedium
+	FontLarge
+)
+
+func (a *App) stringToTexture(s string, size FontSize) *sdl.Texture {
+	var font *ttf.Font
+	switch size {
+	case FontSmall:
+		font = a.fontSmall
+	case FontMedium:
+		font = a.fontMedium
+	case FontLarge:
+		font = a.fontLarge
+	}
+
+	surface, err := font.RenderUTF8Blended(s, sdl.Color{R: 255, G: 0, B: 0})
+	if err != nil {
+		panic(err)
+	}
+	defer surface.Free()
+
+	tex, err := a.renderer.CreateTextureFromSurface(surface)
+	if err != nil {
+		panic(err)
+	}
+
+	return tex
+}
+
 func (a *App) draw(level *game.Level) {
 	a.r.Seed(1)
 	a.renderer.Clear()
@@ -300,8 +336,6 @@ func (a *App) draw(level *game.Level) {
 		monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
 		a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
 	}
-
-	a.renderer.Copy(a.helloWorld, nil, nil)
 
 	a.renderer.Present()
 }
