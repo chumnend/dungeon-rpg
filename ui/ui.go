@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bufio"
+	"fmt"
 	"image/png"
 	"math/rand"
 	"os"
@@ -10,10 +11,18 @@ import (
 
 	"github.com/chumnend/simple-rpg/game"
 	"github.com/veandco/go-sdl2/sdl"
+	"github.com/veandco/go-sdl2/ttf"
 )
 
 func init() {
-	err := sdl.Init(sdl.INIT_EVERYTHING)
+	var err error
+
+	err = sdl.Init(sdl.INIT_EVERYTHING)
+	if err != nil {
+		panic(err)
+	}
+
+	err = ttf.Init()
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +43,8 @@ type App struct {
 	levelCh chan *game.Level
 	inputCh chan *game.Input
 
-	r *rand.Rand
+	r          *rand.Rand
+	helloWorld *sdl.Texture
 }
 
 // NewApp returns an App struct
@@ -66,6 +76,24 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 	app.inputCh = inputCh
 
 	app.r = rand.New(rand.NewSource(1))
+
+	font, err := ttf.OpenFont("ui/assets/Kingthings.ttf", 32)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
+		panic(err)
+	}
+	defer font.Close()
+
+	solid, err := font.RenderUTF8Solid("Hello World", sdl.Color{255, 0, 0, 0})
+	if err != nil {
+		panic(err)
+	}
+	defer solid.Free()
+
+	app.helloWorld, err = app.renderer.CreateTextureFromSurface(solid)
+	if err != nil {
+		panic(err)
+	}
 
 	return app
 }
@@ -272,6 +300,8 @@ func (a *App) draw(level *game.Level) {
 		monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
 		a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
 	}
+
+	a.renderer.Copy(a.helloWorld, nil, nil)
 
 	a.renderer.Present()
 }
