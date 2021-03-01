@@ -235,22 +235,22 @@ func (a *App) loadTextureIndex() {
 	}
 }
 
-type FontSize int
+type fontSize int
 
 const (
-	FontSmall FontSize = iota
-	FontMedium
-	FontLarge
+	fontSmall fontSize = iota
+	fontMedium
+	fontLarge
 )
 
-func (a *App) stringToTexture(s string, size FontSize) *sdl.Texture {
+func (a *App) stringToTexture(s string, size fontSize) *sdl.Texture {
 	var font *ttf.Font
 	switch size {
-	case FontSmall:
+	case fontSmall:
 		font = a.fontSmall
-	case FontMedium:
+	case fontMedium:
 		font = a.fontMedium
-	case FontLarge:
+	case fontLarge:
 		font = a.fontLarge
 	}
 
