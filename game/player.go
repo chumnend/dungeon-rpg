@@ -29,6 +29,7 @@ func (p *Player) Move(level *Level, to Pos) {
 		p.Pos = to
 	} else {
 		Attack(&p.Character, &monster.Character)
+		level.Events = append(level.Events, "Player attacked "+monster.Name)
 		if p.Hitpoints <= 0 {
 			panic("YOU DIED!")
 		}

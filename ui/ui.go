@@ -37,9 +37,12 @@ type App struct {
 
 	r *rand.Rand
 
-	window       *sdl.Window
-	renderer     *sdl.Renderer
-	textureAtlas *sdl.Texture
+	window        *sdl.Window
+	renderer      *sdl.Renderer
+	textureAtlas  *sdl.Texture
+	str2TexSmall  map[string]*sdl.Texture
+	str2TexMedium map[string]*sdl.Texture
+	str2TexLarge  map[string]*sdl.Texture
 
 	textureIndex map[game.Tile][]sdl.Rect
 	fontSmall    *ttf.Font
@@ -52,13 +55,15 @@ type App struct {
 
 // NewApp returns an App struct
 func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
+	var err error
+
 	app := new(App)
 	app.width = 1280
 	app.height = 730
 	app.centerX = -1
 	app.centerY = -1
 
-	var err error
+	app.r = rand.New(rand.NewSource(1))
 
 	app.window, err = sdl.CreateWindow("RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1280, 720, sdl.WINDOW_SHOWN)
 	if err != nil {
@@ -75,10 +80,9 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 	app.textureAtlas = app.imgFileToTexture("ui/assets/tiles.png")
 	app.loadTextureIndex()
 
-	app.levelCh = levelCh
-	app.inputCh = inputCh
-
-	app.r = rand.New(rand.NewSource(1))
+	app.str2TexSmall = make(map[string]*sdl.Texture)
+	app.str2TexMedium = make(map[string]*sdl.Texture)
+	app.str2TexLarge = make(map[string]*sdl.Texture)
 
 	app.fontSmall, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 24)
 	if err != nil {
@@ -97,6 +101,9 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
+
+	app.levelCh = levelCh
+	app.inputCh = inputCh
 
 	return app
 }
@@ -243,18 +250,27 @@ const (
 	fontLarge
 )
 
-func (a *App) stringToTexture(s string, size fontSize) *sdl.Texture {
+func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Texture {
 	var font *ttf.Font
 	switch size {
 	case fontSmall:
 		font = a.fontSmall
+		if tex, exists := a.str2TexSmall[s]; exists {
+			return tex
+		}
 	case fontMedium:
 		font = a.fontMedium
+		if tex, exists := a.str2TexMedium[s]; exists {
+			return tex
+		}
 	case fontLarge:
 		font = a.fontLarge
+		if tex, exists := a.str2TexLarge[s]; exists {
+			return tex
+		}
 	}
 
-	surface, err := font.RenderUTF8Blended(s, sdl.Color{R: 255, G: 0, B: 0})
+	surface, err := font.RenderUTF8Blended(s, color)
 	if err != nil {
 		panic(err)
 	}
@@ -263,6 +279,16 @@ func (a *App) stringToTexture(s string, size fontSize) *sdl.Texture {
 	tex, err := a.renderer.CreateTextureFromSurface(surface)
 	if err != nil {
 		panic(err)
+	}
+
+	switch size {
+	case fontSmall:
+		a.str2TexSmall[s] = tex
+	case fontMedium:
+		font = a.fontMedium
+		a.str2TexMedium[s] = tex
+	case fontLarge:
+		a.str2TexLarge[s] = tex
 	}
 
 	return tex
@@ -335,6 +361,15 @@ func (a *App) draw(level *game.Level) {
 		monsterSrcRect := a.textureIndex[monster.Symbol][0]
 		monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
 		a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
+	}
+
+	for i, event := range level.Events {
+		tex := a.stringToTexture(event, fontMedium, sdl.Color{R: 255, G: 0, B: 0})
+		_, _, w, h, err := tex.Query()
+		if err != nil {
+			fmt.Println("Problem loading event: " + event)
+		}
+		a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(i * 32), W: w, H: h})
 	}
 
 	a.renderer.Present()

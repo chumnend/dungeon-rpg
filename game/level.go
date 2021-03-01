@@ -25,6 +25,7 @@ type Level struct {
 	Tiles    [][]Tile
 	Player   *Player
 	Monsters map[Pos]*Monster
+	Events   []string
 	Debug    map[Pos]bool
 }
 
@@ -49,6 +50,7 @@ func loadLevelFromFile(filename string) *Level {
 
 	level := &Level{}
 	level.Monsters = make(map[Pos]*Monster)
+	level.Events = make([]string, 0)
 	level.Tiles = make([][]Tile, len(lines))
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)

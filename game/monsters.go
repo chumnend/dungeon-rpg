@@ -68,5 +68,6 @@ func (m *Monster) Move(level *Level, to Pos) {
 		m.Pos = to
 	} else {
 		Attack(&m.Character, &level.Player.Character)
+		level.Events = append(level.Events, m.Name+" attacked Player")
 	}
 }
