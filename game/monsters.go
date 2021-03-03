@@ -67,17 +67,13 @@ func (m *Monster) Move(level *Level, to Pos) {
 		level.Monsters[to] = m
 		m.Pos = to
 	} else {
-		m.Attack(level.Player)
 		level.AddEvent(m.Name + " attacked Player")
+		m.Attack(level.Player)
 	}
 }
 
 // Attack ...
 func (m *Monster) Attack(p *Player) {
 	p.Hitpoints -= m.Damage
-
-	if p.Hitpoints > 0 {
-		p.ActionPoints--
-		m.Hitpoints -= p.Damage
-	}
+	m.ActionPoints--
 }

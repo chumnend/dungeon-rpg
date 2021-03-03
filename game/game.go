@@ -72,6 +72,7 @@ func (game *Game) Run() {
 		for pos, monster := range game.Level.Monsters {
 			monster.Update(game.Level)
 			if monster.Hitpoints <= 0 {
+				game.Level.AddEvent(monster.Name + " has been killed")
 				delete(game.Level.Monsters, pos)
 			}
 		}

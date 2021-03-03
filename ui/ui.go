@@ -365,21 +365,14 @@ func (a *App) draw(level *game.Level) {
 
 	// draw event log
 	textStart := int32(float64(a.height) * 0.75)
-	i := level.EventPos
-	for {
-		event := level.Events[i]
+	for idx, event := range level.Events {
 		if event != "" {
 			tex := a.stringToTexture(event, fontMedium, sdl.Color{R: 255, G: 0, B: 0})
 			_, _, w, h, err := tex.Query()
 			if err != nil {
 				fmt.Println("Problem loading event: " + event)
 			}
-			a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(i*32) + textStart, W: w, H: h})
-		}
-
-		i = (i + 1) % len(level.Events)
-		if i == level.EventPos {
-			break
+			a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(idx*32) + textStart, W: w, H: h})
 		}
 	}
 
