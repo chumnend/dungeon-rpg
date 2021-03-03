@@ -14,7 +14,7 @@ func NewPlayer(p Pos) *Player {
 				Name:   "Player",
 				Symbol: '@',
 			},
-			Hitpoints:    20,
+			Hitpoints:    10,
 			Damage:       10,
 			Speed:        1.0,
 			ActionPoints: 0,
@@ -39,5 +39,4 @@ func (p *Player) Move(level *Level, to Pos) {
 // Attack ...
 func (p *Player) Attack(m *Monster) {
 	m.Hitpoints -= p.Damage
-	p.ActionPoints--
 }

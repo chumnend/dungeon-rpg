@@ -41,15 +41,18 @@ func NewSpider(p Pos) *Monster {
 
 // Update updates the monsters position relative to the player
 func (m *Monster) Update(level *Level) {
+	m.ActionPoints += m.Speed
+
 	playerPos := level.Player.Pos
 	positions := level.astar(m.Pos, playerPos)
-	moveIndex := 1
 
-	if len(positions) > 0 {
-		m.ActionPoints += m.Speed
+	if len(positions) == 0 {
+		m.Pass()
+		return
 	}
-	ap := int(m.ActionPoints)
 
+	moveIndex := 1
+	ap := int(m.ActionPoints)
 	for i := 0; i < ap; i++ {
 		if moveIndex < len(positions) {
 			m.Move(level, positions[moveIndex])
@@ -59,6 +62,11 @@ func (m *Monster) Update(level *Level) {
 	}
 }
 
+// Pass ...
+func (m *Monster) Pass() {
+	m.ActionPoints -= m.Speed
+}
+
 // Move moves the monster to a given position
 func (m *Monster) Move(level *Level, to Pos) {
 	// check if valid tile
@@ -66,7 +74,7 @@ func (m *Monster) Move(level *Level, to Pos) {
 		delete(level.Monsters, m.Pos)
 		level.Monsters[to] = m
 		m.Pos = to
-	} else {
+	} else if to == level.Player.Pos {
 		level.AddEvent(m.Name + " attacked Player")
 		m.Attack(level.Player)
 	}

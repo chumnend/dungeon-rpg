@@ -70,11 +70,16 @@ func (game *Game) Run() {
 		game.handleInput(input)
 
 		for pos, monster := range game.Level.Monsters {
-			monster.Update(game.Level)
 			if monster.Hitpoints <= 0 {
 				game.Level.AddEvent(monster.Name + " has been killed")
 				delete(game.Level.Monsters, pos)
+			} else {
+				monster.Update(game.Level)
 			}
+		}
+
+		if len(game.Level.Monsters) == 0 {
+			panic("Level Complete")
 		}
 
 		game.LevelCh <- game.Level

@@ -37,12 +37,13 @@ type App struct {
 
 	r *rand.Rand
 
-	window        *sdl.Window
-	renderer      *sdl.Renderer
-	textureAtlas  *sdl.Texture
-	str2TexSmall  map[string]*sdl.Texture
-	str2TexMedium map[string]*sdl.Texture
-	str2TexLarge  map[string]*sdl.Texture
+	window          *sdl.Window
+	renderer        *sdl.Renderer
+	textureAtlas    *sdl.Texture
+	eventBackground *sdl.Texture
+	str2TexSmall    map[string]*sdl.Texture
+	str2TexMedium   map[string]*sdl.Texture
+	str2TexLarge    map[string]*sdl.Texture
 
 	textureIndex map[game.Tile][]sdl.Rect
 	fontSmall    *ttf.Font
@@ -79,6 +80,8 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 
 	app.textureAtlas = app.imgFileToTexture("ui/assets/tiles.png")
 	app.loadTextureIndex()
+
+	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
 
 	app.str2TexSmall = make(map[string]*sdl.Texture)
 	app.str2TexMedium = make(map[string]*sdl.Texture)
@@ -187,7 +190,6 @@ func (a *App) imgFileToTexture(filename string) *sdl.Texture {
 	}
 
 	tex.Update(nil, pixels, w*4)
-
 	err = tex.SetBlendMode(sdl.BLENDMODE_BLEND)
 	if err != nil {
 		panic(err)
@@ -294,6 +296,27 @@ func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Tex
 	return tex
 }
 
+func (a *App) getSinglePixelTexture(color sdl.Color) *sdl.Texture {
+	tex, err := a.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STATIC, 1, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	pixels := make([]byte, 4)
+	pixels[0] = color.R
+	pixels[1] = color.G
+	pixels[2] = color.B
+	pixels[3] = color.A
+
+	tex.Update(nil, pixels, 4)
+	err = tex.SetBlendMode(sdl.BLENDMODE_BLEND)
+	if err != nil {
+		panic(err)
+	}
+
+	return tex
+}
+
 func (a *App) draw(level *game.Level) {
 	a.r.Seed(1)
 	a.renderer.Clear()
@@ -365,6 +388,13 @@ func (a *App) draw(level *game.Level) {
 
 	// draw event log
 	textStart := int32(float64(a.height) * 0.75)
+	a.renderer.Copy(a.eventBackground, nil, &sdl.Rect{
+		X: 0,
+		Y: textStart,
+		W: int32(float64(a.width) * 0.25),
+		H: int32(float64(a.height) * 0.75),
+	})
+
 	for idx, event := range level.Events {
 		if event != "" {
 			tex := a.stringToTexture(event, fontMedium, sdl.Color{R: 255, G: 0, B: 0})
