@@ -26,6 +26,7 @@ type Level struct {
 	Player   *Player
 	Monsters map[Pos]*Monster
 	Events   []string
+	EventPos int
 	Debug    map[Pos]bool
 }
 
@@ -50,7 +51,8 @@ func loadLevelFromFile(filename string) *Level {
 
 	level := &Level{}
 	level.Monsters = make(map[Pos]*Monster)
-	level.Events = make([]string, 0)
+	level.Events = make([]string, 5)
+	level.EventPos = 0
 	level.Tiles = make([][]Tile, len(lines))
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)
@@ -100,6 +102,16 @@ func loadLevelFromFile(filename string) *Level {
 	}
 
 	return level
+}
+
+// AddEvent adds a string ti the event slice
+func (level *Level) AddEvent(event string) {
+	level.Events[level.EventPos] = event
+	level.EventPos++
+	if level.EventPos == len(level.Events) {
+		level.EventPos = 0
+	}
+
 }
 
 func (level *Level) inRange(pos Pos) bool {

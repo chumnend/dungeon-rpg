@@ -30,6 +30,15 @@ type Entity struct {
 	Symbol Tile
 }
 
+// Character represents a type of character in the game (ie. player, monster)
+type Character struct {
+	Entity
+	Hitpoints    int
+	Damage       int
+	Speed        float64
+	ActionPoints float64
+}
+
 // Game represents the RPG game state
 type Game struct {
 	LevelCh chan *Level
