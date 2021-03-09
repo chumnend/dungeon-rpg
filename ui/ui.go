@@ -87,19 +87,19 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 	app.str2TexMedium = make(map[string]*sdl.Texture)
 	app.str2TexLarge = make(map[string]*sdl.Texture)
 
-	app.fontSmall, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 24)
+	app.fontSmall, err = ttf.OpenFont("ui/assets/Kingthings.ttf", int(float64(app.width)*0.015))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
-	app.fontMedium, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 32)
+	app.fontMedium, err = ttf.OpenFont("ui/assets/Kingthings.ttf", int(float64(app.width)*0.025))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
-	app.fontLarge, err = ttf.OpenFont("ui/assets/Kingthings.ttf", 64)
+	app.fontLarge, err = ttf.OpenFont("ui/assets/Kingthings.ttf", int(float64(app.width)*0.05))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
@@ -395,14 +395,26 @@ func (a *App) draw(level *game.Level) {
 		H: int32(float64(a.height) * 0.75),
 	})
 
-	for idx, event := range level.Events {
+	_, fontSizeY, _ := a.fontSmall.SizeUTF8("A")
+
+	i := level.EventPos
+	count := 0
+	for {
+		event := level.Events[i]
 		if event != "" {
-			tex := a.stringToTexture(event, fontMedium, sdl.Color{R: 255, G: 0, B: 0})
+			tex := a.stringToTexture(event, fontSmall, sdl.Color{R: 255, G: 0, B: 0})
 			_, _, w, h, err := tex.Query()
 			if err != nil {
 				fmt.Println("Problem loading event: " + event)
 			}
-			a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(idx*32) + textStart, W: w, H: h})
+			a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(count*fontSizeY) + textStart, W: w, H: h})
+		}
+
+		i = (i + 1) % (len(level.Events))
+		count++
+
+		if i == level.EventPos {
+			break
 		}
 	}
 
