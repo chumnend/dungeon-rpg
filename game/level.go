@@ -8,11 +8,14 @@ import (
 )
 
 // Tile represents the representation of an element in a map
-type Tile rune
+type Tile struct {
+	Symbol  rune
+	Visible bool
+}
 
 // Enum of differetn space types
 const (
-	StoneTile      Tile = '#'
+	StoneTile      rune = '#'
 	DirtTile            = '.'
 	ClosedDoorTile      = '|'
 	OpenedDoorTile      = '/'
@@ -67,24 +70,24 @@ func loadLevelFromFile(filename string) *Level {
 
 			switch c {
 			case ' ', '\t', '\n', '\r':
-				t = EmptyTile
+				t.Symbol = EmptyTile
 			case '#':
-				t = StoneTile
+				t.Symbol = StoneTile
 			case '|':
-				t = ClosedDoorTile
+				t.Symbol = ClosedDoorTile
 			case '/':
-				t = OpenedDoorTile
+				t.Symbol = OpenedDoorTile
 			case '.':
-				t = DirtTile
+				t.Symbol = DirtTile
 			case '@':
 				level.Player = NewPlayer(pos)
-				t = PendingTile
+				t.Symbol = PendingTile
 			case 'R':
 				level.Monsters[pos] = NewRat(pos)
-				t = PendingTile
+				t.Symbol = PendingTile
 			case 'S':
 				level.Monsters[pos] = NewSpider(pos)
-				t = PendingTile
+				t.Symbol = PendingTile
 			default:
 				panic("Invalid Character: " + string(c))
 			}
@@ -95,7 +98,7 @@ func loadLevelFromFile(filename string) *Level {
 
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			if tile == PendingTile {
+			if tile.Symbol == PendingTile {
 				searchPos := Pos{x, y}
 				level.Tiles[y][x] = level.searchTile(searchPos)
 			}
@@ -124,7 +127,7 @@ func (level *Level) canWalk(pos Pos) bool {
 	}
 
 	tile := level.Tiles[pos.Y][pos.X]
-	switch tile {
+	switch tile.Symbol {
 	case EmptyTile, ClosedDoorTile, StoneTile:
 		return false
 	}
@@ -138,8 +141,8 @@ func (level *Level) canWalk(pos Pos) bool {
 
 func (level *Level) checkDoor(pos Pos) {
 	tile := level.Tiles[pos.Y][pos.X]
-	if tile == ClosedDoorTile {
-		level.Tiles[pos.Y][pos.X] = OpenedDoorTile
+	if tile.Symbol == ClosedDoorTile {
+		level.Tiles[pos.Y][pos.X].Symbol = OpenedDoorTile
 	}
 }
 
@@ -189,9 +192,9 @@ func (level *Level) searchTile(start Pos) Tile {
 	for len(queue) > 0 {
 		current := queue[0]
 		currentTile := level.Tiles[current.Y][current.X]
-		switch currentTile {
+		switch currentTile.Symbol {
 		case DirtTile:
-			return DirtTile
+			return Tile{DirtTile, false}
 		default:
 			// do nothing
 		}
@@ -206,7 +209,7 @@ func (level *Level) searchTile(start Pos) Tile {
 		}
 	}
 
-	return DirtTile
+	return Tile{DirtTile, false}
 }
 
 func (level *Level) astar(start Pos, goal Pos) []Pos {

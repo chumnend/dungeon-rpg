@@ -45,7 +45,7 @@ type App struct {
 	str2TexMedium   map[string]*sdl.Texture
 	str2TexLarge    map[string]*sdl.Texture
 
-	textureIndex map[game.Tile][]sdl.Rect
+	textureIndex map[rune][]sdl.Rect
 	fontSmall    *ttf.Font
 	fontMedium   *ttf.Font
 	fontLarge    *ttf.Font
@@ -131,8 +131,6 @@ func (a *App) Run() {
 						input.Type = game.Left
 					case sdl.SCANCODE_RIGHT:
 						input.Type = game.Right
-					case sdl.SCANCODE_S:
-						input.Type = game.Search
 					}
 
 					a.inputCh <- &input
@@ -199,7 +197,7 @@ func (a *App) imgFileToTexture(filename string) *sdl.Texture {
 }
 
 func (a *App) loadTextureIndex() {
-	a.textureIndex = make(map[game.Tile][]sdl.Rect)
+	a.textureIndex = make(map[rune][]sdl.Rect)
 
 	file, err := os.Open("ui/assets/atlas-index.txt")
 	if err != nil {
@@ -211,7 +209,7 @@ func (a *App) loadTextureIndex() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
 
-		tile := game.Tile(line[0])
+		tile := rune(line[0])
 		tileInfo := strings.Split(line[1:], ",") // x, y, variation
 
 		x, err := strconv.ParseInt(strings.TrimSpace(tileInfo[0]), 10, 64)
@@ -345,11 +343,11 @@ func (a *App) draw(level *game.Level) {
 	// draw floor tiles
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			if tile == game.EmptyTile {
+			if tile.Symbol == game.EmptyTile {
 				continue
 			}
 
-			srcRects := a.textureIndex[tile]
+			srcRects := a.textureIndex[tile.Symbol]
 			srcRect := srcRects[a.r.Intn(len(srcRects))]
 			destRect := sdl.Rect{
 				X: int32(x*32) + offsetX,

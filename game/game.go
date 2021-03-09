@@ -10,7 +10,6 @@ const (
 	Down
 	Left
 	Right
-	Search // temp
 )
 
 // Input represents the key board input
@@ -27,7 +26,7 @@ type Pos struct {
 type Entity struct {
 	Pos
 	Name   string
-	Symbol Tile
+	Symbol rune
 }
 
 // Character represents a type of character in the game (ie. player, monster)
