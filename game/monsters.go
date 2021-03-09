@@ -62,11 +62,6 @@ func (m *Monster) Update(level *Level) {
 	}
 }
 
-// Pass ...
-func (m *Monster) Pass() {
-	m.ActionPoints -= m.Speed
-}
-
 // Move moves the monster to a given position
 func (m *Monster) Move(level *Level, to Pos) {
 	// check if valid tile
@@ -75,13 +70,11 @@ func (m *Monster) Move(level *Level, to Pos) {
 		level.Monsters[to] = m
 		m.Pos = to
 	} else if to == level.Player.Pos {
-		level.AddEvent(m.Name + " attacked Player")
-		m.Attack(level.Player)
+		level.attack(&m.Character, &level.Player.Character)
 	}
 }
 
-// Attack ...
-func (m *Monster) Attack(p *Player) {
-	p.Hitpoints -= m.Damage
-	m.ActionPoints--
+// Pass makes monster stay in one spot
+func (m *Monster) Pass() {
+	m.ActionPoints -= m.Speed
 }

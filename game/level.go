@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"math"
 	"os"
+	"strconv"
 )
 
 // Tile represents the representation of an element in a map
@@ -51,7 +52,7 @@ func loadLevelFromFile(filename string) *Level {
 
 	level := &Level{}
 	level.Monsters = make(map[Pos]*Monster)
-	level.Events = make([]string, 10)
+	level.Events = make([]string, 8)
 	level.EventPos = 0
 	level.Tiles = make([][]Tile, len(lines))
 	for i := range level.Tiles {
@@ -126,15 +127,55 @@ func (level *Level) canWalk(pos Pos) bool {
 	switch tile {
 	case EmptyTile, ClosedDoorTile, StoneTile:
 		return false
-	default:
-		return true
 	}
+
+	if _, exists := level.Monsters[pos]; exists {
+		return false
+	}
+
+	return true
 }
 
 func (level *Level) checkDoor(pos Pos) {
 	tile := level.Tiles[pos.Y][pos.X]
 	if tile == ClosedDoorTile {
 		level.Tiles[pos.Y][pos.X] = OpenedDoorTile
+	}
+}
+
+func (level *Level) attack(c1 *Character, c2 *Character) {
+	c2.Hitpoints -= c1.Damage
+	c1.ActionPoints--
+
+	if c2.Hitpoints > 0 {
+		level.AddEvent(c1.Name + " attacked " + c2.Name + " for " + strconv.Itoa(c1.Damage))
+	} else {
+		level.AddEvent(c1.Name + " killed " + c2.Name)
+	}
+}
+
+func (level *Level) resolveMove(pos Pos) {
+	monster, exists := level.Monsters[pos]
+	if exists {
+		level.attack(&level.Player.Character, &monster.Character)
+		if monster.Hitpoints <= 0 {
+			delete(level.Monsters, monster.Pos)
+		}
+		if level.Player.Hitpoints <= 0 {
+			panic("You Died!")
+		}
+	} else if level.canWalk(pos) {
+		level.Player.Move(level, pos)
+	} else {
+		level.checkDoor(pos)
+	}
+
+	for _, monster := range level.Monsters {
+		monster.Update(level)
+	}
+
+	if len(level.Monsters) == 0 {
+		panic("Level Complete")
 	}
 }
 

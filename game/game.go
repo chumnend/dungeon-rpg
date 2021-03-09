@@ -69,19 +69,6 @@ func (game *Game) Run() {
 
 		game.handleInput(input)
 
-		for pos, monster := range game.Level.Monsters {
-			if monster.Hitpoints <= 0 {
-				game.Level.AddEvent(monster.Name + " has been killed")
-				delete(game.Level.Monsters, pos)
-			} else {
-				monster.Update(game.Level)
-			}
-		}
-
-		if len(game.Level.Monsters) == 0 {
-			panic("Level Complete")
-		}
-
 		game.LevelCh <- game.Level
 	}
 }
@@ -104,15 +91,9 @@ func (game *Game) handleInput(input *Input) {
 	case Right:
 		pos = Pos{level.Player.X + 1, level.Player.Y}
 		newPos = true
-	case Search:
-		level.astar(level.Player.Pos, Pos{4, 2})
 	}
 
 	if newPos {
-		if level.canWalk(pos) {
-			level.Player.Move(level, pos)
-		} else {
-			level.checkDoor(pos)
-		}
+		level.resolveMove(pos)
 	}
 }

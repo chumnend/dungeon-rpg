@@ -15,7 +15,7 @@ func NewPlayer(p Pos) *Player {
 				Symbol: '@',
 			},
 			Hitpoints:    10,
-			Damage:       10,
+			Damage:       5,
 			Speed:        1.0,
 			ActionPoints: 0,
 		},
@@ -24,19 +24,5 @@ func NewPlayer(p Pos) *Player {
 
 // Move moves the player to a new position
 func (p *Player) Move(level *Level, to Pos) {
-	// check if valid tile
-	if monster, exists := level.Monsters[to]; !exists {
-		p.Pos = to
-	} else {
-		level.AddEvent("Player attacked " + monster.Name)
-		p.Attack(monster)
-		if p.Hitpoints <= 0 {
-			panic("YOU DIED!")
-		}
-	}
-}
-
-// Attack ...
-func (p *Player) Attack(m *Monster) {
-	m.Hitpoints -= p.Damage
+	p.Pos = to
 }
