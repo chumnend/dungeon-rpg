@@ -1,5 +1,7 @@
 package game
 
+import "math"
+
 // InputType used for input enumeration
 type InputType int
 
@@ -36,6 +38,7 @@ type Character struct {
 	Damage       int
 	Speed        float64
 	ActionPoints float64
+	SightRange   int
 }
 
 // Game represents the RPG game state
@@ -95,4 +98,44 @@ func (game *Game) handleInput(input *Input) {
 	if newPos {
 		level.resolveMove(pos)
 	}
+}
+
+func bresenham(start Pos, end Pos) []Pos {
+	result := make([]Pos, 0)
+	isSteep := math.Abs(float64(end.Y-start.Y)) > math.Abs(float64(end.X-start.X))
+	if isSteep {
+		start.X, start.Y = start.Y, start.X
+		end.X, end.Y = end.Y, end.X
+	}
+
+	if start.X > end.X {
+		start.X, end.X = end.X, start.X
+		start.Y, end.Y = end.Y, start.Y
+	}
+
+	deltaX := end.X - start.X
+	deltaY := int(math.Abs(float64(end.Y - start.Y)))
+
+	err := 0
+	y := start.Y
+	yStep := 1
+	if start.Y >= end.Y {
+		yStep = -1
+	}
+
+	for x := start.X; x < end.X; x++ {
+		if isSteep {
+			result = append(result, Pos{y, x})
+		} else {
+			result = append(result, Pos{x, y})
+		}
+
+		err += deltaY
+		if 2*err >= deltaX {
+			y += yStep
+			err -= deltaX
+		}
+	}
+
+	return result
 }

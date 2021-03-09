@@ -57,6 +57,7 @@ func loadLevelFromFile(filename string) *Level {
 	level.Monsters = make(map[Pos]*Monster)
 	level.Events = make([]string, 8)
 	level.EventPos = 0
+	level.Debug = make(map[Pos]bool)
 	level.Tiles = make([][]Tile, len(lines))
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)
@@ -137,6 +138,20 @@ func (level *Level) canWalk(pos Pos) bool {
 	}
 
 	return true
+}
+
+func canSee(level *Level, pos Pos) bool {
+	if !level.inRange(pos) {
+		return false
+	}
+
+	tile := level.Tiles[pos.Y][pos.X]
+	switch tile.Symbol {
+	case EmptyTile, ClosedDoorTile, StoneTile:
+		return false
+	default:
+		return true
+	}
 }
 
 func (level *Level) checkDoor(pos Pos) {

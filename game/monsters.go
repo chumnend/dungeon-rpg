@@ -18,6 +18,7 @@ func NewRat(p Pos) *Monster {
 			Damage:       1,
 			Speed:        2.0,
 			ActionPoints: 0,
+			SightRange:   10,
 		},
 	}
 }
@@ -35,6 +36,7 @@ func NewSpider(p Pos) *Monster {
 			Damage:       2,
 			Speed:        1.0,
 			ActionPoints: 0,
+			SightRange:   10,
 		},
 	}
 }

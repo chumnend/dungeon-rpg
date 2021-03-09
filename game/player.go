@@ -18,6 +18,7 @@ func NewPlayer(p Pos) *Player {
 			Damage:       5,
 			Speed:        1.0,
 			ActionPoints: 0,
+			SightRange:   10,
 		},
 	}
 }
