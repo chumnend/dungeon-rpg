@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chumnend/simple-rpg/game"
+	"github.com/chumnend/simple-rpg/internal/game"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
 )
@@ -78,7 +78,7 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 
 	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
 
-	app.textureAtlas = app.imgFileToTexture("ui/assets/tiles.png")
+	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles.png")
 	app.loadTextureIndex()
 
 	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
@@ -87,19 +87,19 @@ func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
 	app.str2TexMedium = make(map[string]*sdl.Texture)
 	app.str2TexLarge = make(map[string]*sdl.Texture)
 
-	app.fontSmall, err = ttf.OpenFont("ui/assets/Kingthings.ttf", int(float64(app.width)*0.015))
+	app.fontSmall, err = ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(app.width)*0.015))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
-	app.fontMedium, err = ttf.OpenFont("ui/assets/Kingthings.ttf", int(float64(app.width)*0.025))
+	app.fontMedium, err = ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(app.width)*0.025))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
-	app.fontLarge, err = ttf.OpenFont("ui/assets/Kingthings.ttf", int(float64(app.width)*0.05))
+	app.fontLarge, err = ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(app.width)*0.05))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
@@ -199,7 +199,7 @@ func (a *App) imgFileToTexture(filename string) *sdl.Texture {
 func (a *App) loadTextureIndex() {
 	a.textureIndex = make(map[rune][]sdl.Rect)
 
-	file, err := os.Open("ui/assets/atlas-index.txt")
+	file, err := os.Open("internal/ui/assets/atlas-index.txt")
 	if err != nil {
 		panic(err)
 	}
