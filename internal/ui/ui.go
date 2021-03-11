@@ -35,7 +35,8 @@ type App struct {
 	centerX int
 	centerY int
 
-	r *rand.Rand
+	r    *rand.Rand
+	game *game.Game
 
 	window          *sdl.Window
 	renderer        *sdl.Renderer
@@ -44,80 +45,78 @@ type App struct {
 	str2TexSmall    map[string]*sdl.Texture
 	str2TexMedium   map[string]*sdl.Texture
 	str2TexLarge    map[string]*sdl.Texture
-
-	textureIndex map[rune][]sdl.Rect
-	fontSmall    *ttf.Font
-	fontMedium   *ttf.Font
-	fontLarge    *ttf.Font
-
-	levelCh chan *game.Level
-	inputCh chan *game.Input
+	textureIndex    map[rune][]sdl.Rect
+	fontSmall       *ttf.Font
+	fontMedium      *ttf.Font
+	fontLarge       *ttf.Font
 }
 
 // NewApp returns an App struct
-func NewApp(levelCh chan *game.Level, inputCh chan *game.Input) *App {
-	var err error
-
-	app := new(App)
-	app.width = 1280
-	app.height = 730
-	app.centerX = -1
-	app.centerY = -1
-
-	app.r = rand.New(rand.NewSource(1))
-
-	app.window, err = sdl.CreateWindow("RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 1280, 720, sdl.WINDOW_SHOWN)
+func NewApp(game *game.Game, width, height int32) *App {
+	window, err := sdl.CreateWindow("RPG", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, width, height, sdl.WINDOW_SHOWN)
 	if err != nil {
 		panic(err)
 	}
 
-	app.renderer, err = sdl.CreateRenderer(app.window, -1, sdl.RENDERER_ACCELERATED)
+	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
 		panic(err)
 	}
 
 	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
 
+	fontSmall, err := ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(width)*0.015))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
+		panic(err)
+	}
+
+	fontMedium, err := ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(width)*0.025))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
+		panic(err)
+	}
+
+	fontLarge, err := ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(width)*0.05))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
+		panic(err)
+	}
+
+	app := &App{
+		width:         width,
+		height:        height,
+		centerX:       -1,
+		centerY:       -1,
+		r:             rand.New(rand.NewSource(1)),
+		game:          game,
+		window:        window,
+		renderer:      renderer,
+		str2TexSmall:  make(map[string]*sdl.Texture),
+		str2TexMedium: make(map[string]*sdl.Texture),
+		str2TexLarge:  make(map[string]*sdl.Texture),
+		fontSmall:     fontSmall,
+		fontMedium:    fontMedium,
+		fontLarge:     fontLarge,
+	}
+
 	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles.png")
 	app.loadTextureIndex()
-
 	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
-
-	app.str2TexSmall = make(map[string]*sdl.Texture)
-	app.str2TexMedium = make(map[string]*sdl.Texture)
-	app.str2TexLarge = make(map[string]*sdl.Texture)
-
-	app.fontSmall, err = ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(app.width)*0.015))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
-		panic(err)
-	}
-
-	app.fontMedium, err = ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(app.width)*0.025))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
-		panic(err)
-	}
-
-	app.fontLarge, err = ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(app.width)*0.05))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
-		panic(err)
-	}
-
-	app.levelCh = levelCh
-	app.inputCh = inputCh
 
 	return app
 }
 
-// Run starts the application window
-func (a *App) Run() {
+// Start starts the application window
+func (a *App) Start() {
+	go a.game.Run()
+
 	for {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.QuitEvent:
-				a.inputCh <- &game.Input{Type: game.QuitGame}
+				a.game.InputCh <- &game.Input{Type: game.QuitGame}
+				return
 			case *sdl.KeyboardEvent:
 				var input game.Input
 
@@ -133,13 +132,13 @@ func (a *App) Run() {
 						input.Type = game.Right
 					}
 
-					a.inputCh <- &input
+					a.game.InputCh <- &input
 				}
 			}
 		}
 
 		select {
-		case newLevel, ok := <-a.levelCh:
+		case newLevel, ok := <-a.game.LevelCh:
 			if ok {
 				a.draw(newLevel)
 			}

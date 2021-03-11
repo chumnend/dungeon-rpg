@@ -6,9 +6,10 @@ import (
 )
 
 func main() {
+	// setup app
 	game := game.NewGame("internal/game/maps/level1.map")
-	app := ui.NewApp(game.LevelCh, game.InputCh)
+	app := ui.NewApp(game, 1280, 730)
 
-	go app.Run()
-	game.Run()
+	// start the app
+	app.Start()
 }
