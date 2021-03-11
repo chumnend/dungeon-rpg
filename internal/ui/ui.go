@@ -41,11 +41,11 @@ type App struct {
 	window          *sdl.Window
 	renderer        *sdl.Renderer
 	textureAtlas    *sdl.Texture
+	textureIndex    map[rune][]sdl.Rect
 	eventBackground *sdl.Texture
 	str2TexSmall    map[string]*sdl.Texture
 	str2TexMedium   map[string]*sdl.Texture
 	str2TexLarge    map[string]*sdl.Texture
-	textureIndex    map[rune][]sdl.Rect
 	fontSmall       *ttf.Font
 	fontMedium      *ttf.Font
 	fontLarge       *ttf.Font
@@ -101,7 +101,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 	}
 
 	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles.png")
-	app.loadTextureIndex()
+	app.textureIndex = app.loadTextureIndex("internal/ui/assets/atlas-index.txt")
 	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
 
 	return app
@@ -195,10 +195,10 @@ func (a *App) imgFileToTexture(filename string) *sdl.Texture {
 	return tex
 }
 
-func (a *App) loadTextureIndex() {
-	a.textureIndex = make(map[rune][]sdl.Rect)
+func (a *App) loadTextureIndex(filename string) map[rune][]sdl.Rect {
+	textureIndex := make(map[rune][]sdl.Rect)
 
-	file, err := os.Open("internal/ui/assets/atlas-index.txt")
+	file, err := os.Open(filename)
 	if err != nil {
 		panic(err)
 	}
@@ -237,8 +237,31 @@ func (a *App) loadTextureIndex() {
 		}
 
 		// rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
-		a.textureIndex[tile] = rects
+		textureIndex[tile] = rects
 	}
+
+	return textureIndex
+}
+
+func (a *App) getSinglePixelTexture(color sdl.Color) *sdl.Texture {
+	tex, err := a.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STATIC, 1, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	pixels := make([]byte, 4)
+	pixels[0] = color.R
+	pixels[1] = color.G
+	pixels[2] = color.B
+	pixels[3] = color.A
+
+	tex.Update(nil, pixels, 4)
+	err = tex.SetBlendMode(sdl.BLENDMODE_BLEND)
+	if err != nil {
+		panic(err)
+	}
+
+	return tex
 }
 
 type fontSize int
@@ -288,27 +311,6 @@ func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Tex
 		a.str2TexMedium[s] = tex
 	case fontLarge:
 		a.str2TexLarge[s] = tex
-	}
-
-	return tex
-}
-
-func (a *App) getSinglePixelTexture(color sdl.Color) *sdl.Texture {
-	tex, err := a.renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_STATIC, 1, 1)
-	if err != nil {
-		panic(err)
-	}
-
-	pixels := make([]byte, 4)
-	pixels[0] = color.R
-	pixels[1] = color.G
-	pixels[2] = color.B
-	pixels[3] = color.A
-
-	tex.Update(nil, pixels, 4)
-	err = tex.SetBlendMode(sdl.BLENDMODE_BLEND)
-	if err != nil {
-		panic(err)
 	}
 
 	return tex
