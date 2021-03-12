@@ -130,6 +130,8 @@ func (a *App) Start() {
 						input.Type = game.Left
 					case sdl.SCANCODE_RIGHT:
 						input.Type = game.Right
+					default:
+						input.Type = game.None
 					}
 
 					a.game.InputCh <- &input
@@ -344,29 +346,36 @@ func (a *App) draw(level *game.Level) {
 	// draw floor tiles
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			if tile.Symbol == game.EmptyTile || tile.Visible == false {
+			if tile.Symbol == game.EmptyTile {
 				continue
 			}
 
 			srcRects := a.textureIndex[tile.Symbol]
 			srcRect := srcRects[a.r.Intn(len(srcRects))]
-			destRect := sdl.Rect{
-				X: int32(x*32) + offsetX,
-				Y: int32(y*32) + offsetY,
-				W: 32,
-				H: 32,
-			}
 
-			pos := game.Pos{X: x, Y: y}
-			if level.Debug[pos] {
-				a.textureAtlas.SetColorMod(128, 0, 0)
-			} else {
-				a.textureAtlas.SetColorMod(255, 255, 255)
-			}
+			if tile.Visible || tile.Seen {
+				destRect := sdl.Rect{
+					X: int32(x*32) + offsetX,
+					Y: int32(y*32) + offsetY,
+					W: 32,
+					H: 32,
+				}
 
-			a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+				pos := game.Pos{X: x, Y: y}
+				if level.Debug[pos] {
+					a.textureAtlas.SetColorMod(128, 0, 0)
+				} else if tile.Seen && !tile.Visible {
+					a.textureAtlas.SetColorMod(128, 128, 128)
+				} else {
+					a.textureAtlas.SetColorMod(255, 255, 255)
+				}
+
+				a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+			}
 		}
 	}
+
+	a.textureAtlas.SetColorMod(255, 255, 255)
 
 	// draw player
 	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
@@ -380,9 +389,11 @@ func (a *App) draw(level *game.Level) {
 
 	// draw monsters
 	for pos, monster := range level.Monsters {
-		monsterSrcRect := a.textureIndex[monster.Symbol][0]
-		monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
-		a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
+		if level.Tiles[pos.Y][pos.X].Visible {
+			monsterSrcRect := a.textureIndex[monster.Symbol][0]
+			monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+			a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
+		}
 	}
 
 	// draw event log

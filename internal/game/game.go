@@ -10,6 +10,7 @@ const (
 	Down
 	Left
 	Right
+	None
 )
 
 // Input represents the key board input
@@ -89,6 +90,8 @@ func (game *Game) handleInput(input *Input) {
 	case Right:
 		pos = Pos{level.Player.X + 1, level.Player.Y}
 		newPos = true
+	default:
+		// do nothing
 	}
 
 	if newPos {

@@ -14,7 +14,7 @@ func NewPlayer(p Pos) *Player {
 				Name:   "Player",
 				Symbol: '@',
 			},
-			Hitpoints:    10,
+			Hitpoints:    20,
 			Damage:       5,
 			Speed:        1.0,
 			ActionPoints: 0,
@@ -27,9 +27,9 @@ func NewPlayer(p Pos) *Player {
 func (p *Player) Move(level *Level, to Pos) {
 	p.Pos = to
 
-	for _, row := range level.Tiles {
-		for _, tile := range row {
-			tile.Visible = false
+	for y, row := range level.Tiles {
+		for x := range row {
+			level.Tiles[y][x].Visible = false
 		}
 	}
 

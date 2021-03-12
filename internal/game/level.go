@@ -11,6 +11,7 @@ import (
 type Tile struct {
 	Symbol  rune
 	Visible bool
+	Seen    bool
 }
 
 // Enum of differetn space types
@@ -204,6 +205,8 @@ func (level *Level) bresenham(start Pos, end Pos) {
 			}
 
 			level.Tiles[pos.Y][pos.X].Visible = true
+			level.Tiles[pos.Y][pos.X].Seen = true
+
 			if !level.canSee(pos) {
 				return
 			}
@@ -226,6 +229,8 @@ func (level *Level) bresenham(start Pos, end Pos) {
 			}
 
 			level.Tiles[pos.Y][pos.X].Visible = true
+			level.Tiles[pos.Y][pos.X].Seen = true
+
 			if !level.canSee(pos) {
 				return
 			}
@@ -243,6 +248,7 @@ func (level *Level) checkDoor(pos Pos) {
 	tile := level.Tiles[pos.Y][pos.X]
 	if tile.Symbol == ClosedDoorTile {
 		level.Tiles[pos.Y][pos.X].Symbol = OpenedDoorTile
+		level.lineOfSight()
 	}
 }
 
@@ -294,7 +300,7 @@ func (level *Level) searchTile(start Pos) Tile {
 		currentTile := level.Tiles[current.Y][current.X]
 		switch currentTile.Symbol {
 		case DirtTile:
-			return Tile{DirtTile, false}
+			return Tile{Symbol: DirtTile}
 		default:
 			// do nothing
 		}
@@ -309,7 +315,7 @@ func (level *Level) searchTile(start Pos) Tile {
 		}
 	}
 
-	return Tile{DirtTile, false}
+	return Tile{Symbol: DirtTile}
 }
 
 func (level *Level) astar(start Pos, goal Pos) []Pos {
