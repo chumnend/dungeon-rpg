@@ -26,4 +26,12 @@ func NewPlayer(p Pos) *Player {
 // Move moves the player to a new position
 func (p *Player) Move(level *Level, to Pos) {
 	p.Pos = to
+
+	for _, row := range level.Tiles {
+		for _, tile := range row {
+			tile.Visible = false
+		}
+	}
+
+	level.lineOfSight()
 }

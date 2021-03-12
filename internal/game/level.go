@@ -53,12 +53,15 @@ func loadLevelFromFile(filename string) *Level {
 		index++
 	}
 
-	level := &Level{}
-	level.Monsters = make(map[Pos]*Monster)
-	level.Events = make([]string, 8)
-	level.EventPos = 0
-	level.Debug = make(map[Pos]bool)
-	level.Tiles = make([][]Tile, len(lines))
+	level := &Level{
+		Tiles:    make([][]Tile, len(lines)),
+		Player:   nil,
+		Monsters: make(map[Pos]*Monster),
+		Events:   make([]string, 8),
+		EventPos: 0,
+		Debug:    make(map[Pos]bool),
+	}
+
 	for i := range level.Tiles {
 		level.Tiles[i] = make([]Tile, longestRow)
 	}
@@ -106,6 +109,8 @@ func loadLevelFromFile(filename string) *Level {
 		}
 	}
 
+	level.lineOfSight()
+
 	return level
 }
 
@@ -140,7 +145,7 @@ func (level *Level) canWalk(pos Pos) bool {
 	return true
 }
 
-func canSee(level *Level, pos Pos) bool {
+func (level *Level) canSee(pos Pos) bool {
 	if !level.inRange(pos) {
 		return false
 	}
@@ -151,6 +156,86 @@ func canSee(level *Level, pos Pos) bool {
 		return false
 	default:
 		return true
+	}
+}
+
+func (level *Level) lineOfSight() {
+	pos := level.Player.Pos
+	dist := level.Player.SightRange
+
+	for y := pos.Y - dist; y <= pos.Y+dist; y++ {
+		for x := pos.X - dist; x <= pos.X+dist; x++ {
+			xDelta := pos.X - x
+			yDelta := pos.Y - y
+
+			d := math.Sqrt(float64(xDelta*xDelta + yDelta*yDelta))
+			if d <= float64(dist) {
+				level.bresenham(pos, Pos{x, y})
+			}
+		}
+	}
+}
+
+func (level *Level) bresenham(start Pos, end Pos) {
+	isSteep := math.Abs(float64(end.Y-start.Y)) > math.Abs(float64(end.X-start.X))
+	if isSteep {
+		start.X, start.Y = start.Y, start.X
+		end.X, end.Y = end.Y, end.X
+	}
+
+	deltaY := int(math.Abs(float64(end.Y - start.Y)))
+
+	err := 0
+	y := start.Y
+	yStep := 1
+	if start.Y >= end.Y {
+		yStep = -1
+	}
+
+	if start.X > end.X {
+		deltaX := start.X - end.X
+		for x := start.X; x >= end.X; x-- {
+			var pos Pos
+
+			if isSteep {
+				pos = Pos{y, x}
+			} else {
+				pos = Pos{x, y}
+			}
+
+			level.Tiles[pos.Y][pos.X].Visible = true
+			if !level.canSee(pos) {
+				return
+			}
+
+			err += deltaY
+			if 2*err >= deltaX {
+				y += yStep
+				err -= deltaX
+			}
+		}
+	} else {
+		deltaX := end.X - start.X
+		for x := start.X; x < end.X; x++ {
+			var pos Pos
+
+			if isSteep {
+				pos = Pos{y, x}
+			} else {
+				pos = Pos{x, y}
+			}
+
+			level.Tiles[pos.Y][pos.X].Visible = true
+			if !level.canSee(pos) {
+				return
+			}
+
+			err += deltaY
+			if 2*err >= deltaX {
+				y += yStep
+				err -= deltaX
+			}
+		}
 	}
 }
 

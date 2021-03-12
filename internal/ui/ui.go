@@ -344,7 +344,7 @@ func (a *App) draw(level *game.Level) {
 	// draw floor tiles
 	for y, row := range level.Tiles {
 		for x, tile := range row {
-			if tile.Symbol == game.EmptyTile {
+			if tile.Symbol == game.EmptyTile || tile.Visible == false {
 				continue
 			}
 
