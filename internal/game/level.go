@@ -9,9 +9,10 @@ import (
 
 // Tile represents the representation of an element in a map
 type Tile struct {
-	Symbol  rune
-	Visible bool
-	Seen    bool
+	Symbol        rune
+	OverlaySymbol rune
+	Visible       bool
+	Seen          bool
 }
 
 // Enum of differetn space types
@@ -22,6 +23,8 @@ const (
 	OpenedDoorTile      = '/'
 	EmptyTile           = 0
 	PlayerTile          = '@'
+	UpStairTile         = 'u'
+	DownStairTile       = 'd'
 	PendingTile         = -1
 )
 
@@ -71,6 +74,8 @@ func loadLevelFromFile(filename string) *Level {
 		line := lines[y]
 		for x, c := range line {
 			t := level.Tiles[y][x]
+			t.OverlaySymbol = EmptyTile
+
 			pos := Pos{x, y}
 
 			switch c {
@@ -79,9 +84,17 @@ func loadLevelFromFile(filename string) *Level {
 			case '#':
 				t.Symbol = StoneTile
 			case '|':
-				t.Symbol = ClosedDoorTile
+				t.OverlaySymbol = ClosedDoorTile
+				t.Symbol = PendingTile
 			case '/':
-				t.Symbol = OpenedDoorTile
+				t.OverlaySymbol = OpenedDoorTile
+				t.Symbol = PendingTile
+			case 'u':
+				t.OverlaySymbol = UpStairTile
+				t.Symbol = PendingTile
+			case 'd':
+				t.OverlaySymbol = DownStairTile
+				t.Symbol = PendingTile
 			case '.':
 				t.Symbol = DirtTile
 			case '@':
@@ -105,7 +118,7 @@ func loadLevelFromFile(filename string) *Level {
 		for x, tile := range row {
 			if tile.Symbol == PendingTile {
 				searchPos := Pos{x, y}
-				level.Tiles[y][x] = level.searchTile(searchPos)
+				level.Tiles[y][x].Symbol = level.bfsTile(searchPos)
 			}
 		}
 	}
@@ -115,7 +128,7 @@ func loadLevelFromFile(filename string) *Level {
 	return level
 }
 
-// AddEvent adds a string ti the event slice
+// AddEvent adds a string to the event slice
 func (level *Level) AddEvent(event string) {
 	level.Events[level.EventPos] = event
 	level.EventPos++
@@ -135,7 +148,12 @@ func (level *Level) canWalk(pos Pos) bool {
 
 	tile := level.Tiles[pos.Y][pos.X]
 	switch tile.Symbol {
-	case EmptyTile, ClosedDoorTile, StoneTile:
+	case EmptyTile, StoneTile:
+		return false
+	}
+
+	switch tile.OverlaySymbol {
+	case ClosedDoorTile:
 		return false
 	}
 
@@ -146,6 +164,14 @@ func (level *Level) canWalk(pos Pos) bool {
 	return true
 }
 
+func (level *Level) checkDoor(pos Pos) {
+	tile := level.Tiles[pos.Y][pos.X]
+	if tile.OverlaySymbol == ClosedDoorTile {
+		level.Tiles[pos.Y][pos.X].OverlaySymbol = OpenedDoorTile
+		level.lineOfSight()
+	}
+}
+
 func (level *Level) canSee(pos Pos) bool {
 	if !level.inRange(pos) {
 		return false
@@ -153,11 +179,16 @@ func (level *Level) canSee(pos Pos) bool {
 
 	tile := level.Tiles[pos.Y][pos.X]
 	switch tile.Symbol {
-	case EmptyTile, ClosedDoorTile, StoneTile:
+	case EmptyTile, StoneTile:
 		return false
-	default:
-		return true
 	}
+
+	switch tile.OverlaySymbol {
+	case ClosedDoorTile:
+		return false
+	}
+
+	return true
 }
 
 func (level *Level) lineOfSight() {
@@ -244,14 +275,6 @@ func (level *Level) bresenham(start Pos, end Pos) {
 	}
 }
 
-func (level *Level) checkDoor(pos Pos) {
-	tile := level.Tiles[pos.Y][pos.X]
-	if tile.Symbol == ClosedDoorTile {
-		level.Tiles[pos.Y][pos.X].Symbol = OpenedDoorTile
-		level.lineOfSight()
-	}
-}
-
 func (level *Level) attack(c1 *Character, c2 *Character) {
 	c2.Hitpoints -= c1.Damage
 	c1.ActionPoints--
@@ -282,13 +305,9 @@ func (level *Level) resolveMove(pos Pos) {
 	for _, monster := range level.Monsters {
 		monster.Update(level)
 	}
-
-	if len(level.Monsters) == 0 {
-		panic("Level Complete")
-	}
 }
 
-func (level *Level) searchTile(start Pos) Tile {
+func (level *Level) bfsTile(start Pos) rune {
 	// utilizes BFS
 	queue := make([]Pos, 0, 8)
 	queue = append(queue, start)
@@ -298,9 +317,10 @@ func (level *Level) searchTile(start Pos) Tile {
 	for len(queue) > 0 {
 		current := queue[0]
 		currentTile := level.Tiles[current.Y][current.X]
+
 		switch currentTile.Symbol {
 		case DirtTile:
-			return Tile{Symbol: DirtTile}
+			return DirtTile
 		default:
 			// do nothing
 		}
@@ -315,7 +335,7 @@ func (level *Level) searchTile(start Pos) Tile {
 		}
 	}
 
-	return Tile{Symbol: DirtTile}
+	return DirtTile
 }
 
 func (level *Level) astar(start Pos, goal Pos) []Pos {

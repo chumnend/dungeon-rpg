@@ -371,6 +371,12 @@ func (a *App) draw(level *game.Level) {
 				}
 
 				a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+
+				if tile.OverlaySymbol != game.EmptyTile {
+					srcRect = a.textureIndex[tile.OverlaySymbol][0]
+					a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+				}
+
 			}
 		}
 	}
