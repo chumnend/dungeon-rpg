@@ -142,6 +142,8 @@ func (a *App) Start() {
 		select {
 		case newLevel, ok := <-a.game.LevelCh:
 			if ok {
+				a.centerX = -1
+				a.centerY = -1
 				a.draw(newLevel)
 			}
 		default:

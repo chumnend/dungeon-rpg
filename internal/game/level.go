@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 // Tile represents the representation of an element in a map
@@ -33,99 +35,114 @@ type Level struct {
 	Tiles    [][]Tile
 	Player   *Player
 	Monsters map[Pos]*Monster
+	Portals  map[Pos]*LevelPos
 	Events   []string
 	EventPos int
 	Debug    map[Pos]bool
 }
 
-func loadLevelFromFile(filename string) *Level {
-	file, err := os.Open(filename)
+func loadLevels() map[string]*Level {
+	levels := make(map[string]*Level)
+
+	filenames, err := filepath.Glob("internal/game/maps/*.map")
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	lines := make([]string, 0)
-	longestRow := 0
-	index := 0
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-		if len(lines[index]) > longestRow {
-			longestRow = len(lines[index])
+	for _, filename := range filenames {
+		startIndex := strings.LastIndex(filename, "/")
+		endIndex := strings.LastIndex(filename, ".map")
+		levelName := filename[startIndex+1 : endIndex]
+
+		file, err := os.Open(filename)
+		if err != nil {
+			panic(err)
 		}
-		index++
-	}
+		defer file.Close()
 
-	level := &Level{
-		Tiles:    make([][]Tile, len(lines)),
-		Player:   nil,
-		Monsters: make(map[Pos]*Monster),
-		Events:   make([]string, 8),
-		EventPos: 0,
-		Debug:    make(map[Pos]bool),
-	}
-
-	for i := range level.Tiles {
-		level.Tiles[i] = make([]Tile, longestRow)
-	}
-
-	for y := range level.Tiles {
-		line := lines[y]
-		for x, c := range line {
-			t := level.Tiles[y][x]
-			t.OverlaySymbol = EmptyTile
-
-			pos := Pos{x, y}
-
-			switch c {
-			case ' ', '\t', '\n', '\r':
-				t.Symbol = EmptyTile
-			case '#':
-				t.Symbol = StoneTile
-			case '|':
-				t.OverlaySymbol = ClosedDoorTile
-				t.Symbol = PendingTile
-			case '/':
-				t.OverlaySymbol = OpenedDoorTile
-				t.Symbol = PendingTile
-			case 'u':
-				t.OverlaySymbol = UpStairTile
-				t.Symbol = PendingTile
-			case 'd':
-				t.OverlaySymbol = DownStairTile
-				t.Symbol = PendingTile
-			case '.':
-				t.Symbol = DirtTile
-			case '@':
-				level.Player = NewPlayer(pos)
-				t.Symbol = PendingTile
-			case 'R':
-				level.Monsters[pos] = NewRat(pos)
-				t.Symbol = PendingTile
-			case 'S':
-				level.Monsters[pos] = NewSpider(pos)
-				t.Symbol = PendingTile
-			default:
-				panic("Invalid Character: " + string(c))
+		scanner := bufio.NewScanner(file)
+		lines := make([]string, 0)
+		longestRow := 0
+		index := 0
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+			if len(lines[index]) > longestRow {
+				longestRow = len(lines[index])
 			}
-
-			level.Tiles[y][x] = t
+			index++
 		}
-	}
 
-	for y, row := range level.Tiles {
-		for x, tile := range row {
-			if tile.Symbol == PendingTile {
-				searchPos := Pos{x, y}
-				level.Tiles[y][x].Symbol = level.bfsTile(searchPos)
+		level := &Level{
+			Tiles:    make([][]Tile, len(lines)),
+			Player:   nil,
+			Monsters: make(map[Pos]*Monster),
+			Portals:  make(map[Pos]*LevelPos),
+			Events:   make([]string, 8),
+			EventPos: 0,
+			Debug:    make(map[Pos]bool),
+		}
+
+		for i := range level.Tiles {
+			level.Tiles[i] = make([]Tile, longestRow)
+		}
+
+		for y := range level.Tiles {
+			line := lines[y]
+			for x, c := range line {
+				t := level.Tiles[y][x]
+				t.OverlaySymbol = EmptyTile
+
+				pos := Pos{x, y}
+
+				switch c {
+				case ' ', '\t', '\n', '\r':
+					t.Symbol = EmptyTile
+				case '#':
+					t.Symbol = StoneTile
+				case '|':
+					t.OverlaySymbol = ClosedDoorTile
+					t.Symbol = PendingTile
+				case '/':
+					t.OverlaySymbol = OpenedDoorTile
+					t.Symbol = PendingTile
+				case 'u':
+					t.OverlaySymbol = UpStairTile
+					t.Symbol = PendingTile
+				case 'd':
+					t.OverlaySymbol = DownStairTile
+					t.Symbol = PendingTile
+				case '.':
+					t.Symbol = DirtTile
+				case '@':
+					level.Player = NewPlayer(pos)
+					t.Symbol = PendingTile
+				case 'R':
+					level.Monsters[pos] = NewRat(pos)
+					t.Symbol = PendingTile
+				case 'S':
+					level.Monsters[pos] = NewSpider(pos)
+					t.Symbol = PendingTile
+				default:
+					panic("Invalid Character: " + string(c))
+				}
+
+				level.Tiles[y][x] = t
 			}
 		}
+
+		for y, row := range level.Tiles {
+			for x, tile := range row {
+				if tile.Symbol == PendingTile {
+					searchPos := Pos{x, y}
+					level.Tiles[y][x].Symbol = level.bfsTile(searchPos)
+				}
+			}
+		}
+
+		levels[levelName] = level
 	}
 
-	level.lineOfSight()
-
-	return level
+	return levels
 }
 
 // AddEvent adds a string to the event slice
@@ -195,6 +212,14 @@ func (level *Level) lineOfSight() {
 	pos := level.Player.Pos
 	dist := level.Player.SightRange
 
+	// reset visibility of tiles
+	for y, row := range level.Tiles {
+		for x := range row {
+			level.Tiles[y][x].Visible = false
+		}
+	}
+
+	// reveal tiles in player's sight range
 	for y := pos.Y - dist; y <= pos.Y+dist; y++ {
 		for x := pos.X - dist; x <= pos.X+dist; x++ {
 			xDelta := pos.X - x
@@ -298,6 +323,7 @@ func (level *Level) resolveMove(pos Pos) {
 		}
 	} else if level.canWalk(pos) {
 		level.Player.Move(level, pos)
+		level.lineOfSight()
 	} else {
 		level.checkDoor(pos)
 	}
