@@ -74,7 +74,6 @@ func NewApp(game *game.Game, width, height int32) *App {
 	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
 
 	r := rand.New(rand.NewSource(1))
-	r.Seed(1)
 
 	smallFont, err := ttf.OpenFont("internal/ui/assets/fonts/Kingthings.ttf", int(float64(width)*0.015))
 	if err != nil {
@@ -386,6 +385,7 @@ func playRandomSound(chunks []*mix.Chunk, volume int) {
 
 func (a *App) draw(level *game.Level) {
 	a.renderer.Clear()
+	a.r.Seed(1)
 
 	if a.centerX == -1 && a.centerY == -1 {
 		a.centerX = level.Player.X
