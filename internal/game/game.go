@@ -119,6 +119,7 @@ func (game *Game) handleInput(input *Input) {
 		// check if at portal
 		nextLevel := level.Portals[pos]
 		if nextLevel != nil {
+			level.LastEvent = Portal
 			level.Player.Pos = nextLevel.Pos
 			game.CurrentLevel = nextLevel.Level
 			game.CurrentLevel.lineOfSight()

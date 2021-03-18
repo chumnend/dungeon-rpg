@@ -30,15 +30,28 @@ const (
 	PendingTile         = -1
 )
 
+// Event represents an action that occured in the game
+type Event int
+
+// Enum of game events
+const (
+	Move Event = iota
+	DoorOpen
+	Attack
+	Hit
+	Portal
+)
+
 // Level represents the mapping of a level
 type Level struct {
-	Tiles    [][]Tile
-	Player   *Player
-	Monsters map[Pos]*Monster
-	Portals  map[Pos]*LevelPos
-	Events   []string
-	EventPos int
-	Debug    map[Pos]bool
+	Tiles     [][]Tile
+	Player    *Player
+	Monsters  map[Pos]*Monster
+	Portals   map[Pos]*LevelPos
+	Events    []string
+	EventPos  int
+	LastEvent Event
+	Debug     map[Pos]bool
 }
 
 func loadLevels() map[string]*Level {
@@ -184,6 +197,7 @@ func (level *Level) canWalk(pos Pos) bool {
 func (level *Level) checkDoor(pos Pos) {
 	tile := level.Tiles[pos.Y][pos.X]
 	if tile.OverlaySymbol == ClosedDoorTile {
+		level.LastEvent = DoorOpen
 		level.Tiles[pos.Y][pos.X].OverlaySymbol = OpenedDoorTile
 		level.lineOfSight()
 	}
@@ -314,6 +328,7 @@ func (level *Level) attack(c1 *Character, c2 *Character) {
 func (level *Level) resolveMove(pos Pos) {
 	monster, exists := level.Monsters[pos]
 	if exists {
+		level.LastEvent = Attack
 		level.attack(&level.Player.Character, &monster.Character)
 		if monster.Hitpoints <= 0 {
 			delete(level.Monsters, monster.Pos)
@@ -322,6 +337,7 @@ func (level *Level) resolveMove(pos Pos) {
 			panic("You Died!")
 		}
 	} else if level.canWalk(pos) {
+		level.LastEvent = Move
 		level.Player.Move(level, pos)
 		level.lineOfSight()
 	} else {

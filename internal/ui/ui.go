@@ -52,9 +52,11 @@ type App struct {
 	str2TexSmall    map[string]*sdl.Texture
 	str2TexMedium   map[string]*sdl.Texture
 	str2TexLarge    map[string]*sdl.Texture
-	fontSmall       *ttf.Font
-	fontMedium      *ttf.Font
-	fontLarge       *ttf.Font
+	smallFont       *ttf.Font
+	mediumFont      *ttf.Font
+	largeFont       *ttf.Font
+	footstepSounds  []*mix.Chunk
+	doorOpenSounds  []*mix.Chunk
 }
 
 // NewApp returns an App struct
@@ -71,19 +73,22 @@ func NewApp(game *game.Game, width, height int32) *App {
 
 	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
 
-	fontSmall, err := ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(width)*0.015))
+	r := rand.New(rand.NewSource(1))
+	r.Seed(1)
+
+	smallFont, err := ttf.OpenFont("internal/ui/assets/fonts/Kingthings.ttf", int(float64(width)*0.015))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
-	fontMedium, err := ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(width)*0.025))
+	mediumFont, err := ttf.OpenFont("internal/ui/assets/fonts/Kingthings.ttf", int(float64(width)*0.025))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
 	}
 
-	fontLarge, err := ttf.OpenFont("internal/ui/assets/Kingthings.ttf", int(float64(width)*0.05))
+	largeFont, err := ttf.OpenFont("internal/ui/assets/fonts/Kingthings.ttf", int(float64(width)*0.05))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open font: %s\n", err)
 		panic(err)
@@ -95,30 +100,59 @@ func NewApp(game *game.Game, width, height int32) *App {
 		panic(err)
 	}
 
-	music, err := mix.LoadMUS("internal/ui/assets/LittleTownRemix.ogg")
+	music, err := mix.LoadMUS("internal/ui/assets/sound/ambient.ogg")
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to play music: %s\n", err)
 		panic(err)
 	}
 	music.Play(-1)
 
-	app := &App{
-		width:         width,
-		height:        height,
-		centerX:       -1,
-		centerY:       -1,
-		r:             rand.New(rand.NewSource(1)),
-		game:          game,
-		window:        window,
-		renderer:      renderer,
-		str2TexSmall:  make(map[string]*sdl.Texture),
-		str2TexMedium: make(map[string]*sdl.Texture),
-		str2TexLarge:  make(map[string]*sdl.Texture),
-		fontSmall:     fontSmall,
-		fontMedium:    fontMedium,
-		fontLarge:     fontLarge,
+	footstepSounds := make([]*mix.Chunk, 0)
+	footstepBase := "internal/ui/assets/sound/footstep0"
+	for i := 0; i < 6; i++ {
+		path := footstepBase + strconv.Itoa(i) + ".ogg"
+		wav, err := mix.LoadWAV(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open sound file: %s\n", err)
+			panic(err)
+		}
+
+		footstepSounds = append(footstepSounds, wav)
 	}
 
-	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles.png")
+	doorOpenSounds := make([]*mix.Chunk, 0)
+	doorOpenBase := "internal/ui/assets/sound/doorOpen_"
+	for i := 1; i < 3; i++ {
+		path := doorOpenBase + strconv.Itoa(i) + ".ogg"
+		wav, err := mix.LoadWAV(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open sound file: %s\n", err)
+			panic(err)
+		}
+
+		doorOpenSounds = append(doorOpenSounds, wav)
+	}
+
+	app := &App{
+		width:          width,
+		height:         height,
+		centerX:        -1,
+		centerY:        -1,
+		r:              r,
+		game:           game,
+		window:         window,
+		renderer:       renderer,
+		str2TexSmall:   make(map[string]*sdl.Texture),
+		str2TexMedium:  make(map[string]*sdl.Texture),
+		str2TexLarge:   make(map[string]*sdl.Texture),
+		smallFont:      smallFont,
+		mediumFont:     mediumFont,
+		largeFont:      largeFont,
+		footstepSounds: footstepSounds,
+		doorOpenSounds: doorOpenSounds,
+	}
+
+	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles/tiles.png")
 	app.textureIndex = app.loadTextureIndex("internal/ui/assets/atlas-index.txt")
 	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
 
@@ -160,6 +194,14 @@ func (a *App) Start() {
 		select {
 		case newLevel, ok := <-a.game.LevelCh:
 			if ok {
+				switch newLevel.LastEvent {
+				case game.Move:
+					playRandomSound(a.footstepSounds, 64)
+				case game.DoorOpen:
+					playRandomSound(a.doorOpenSounds, 64)
+				default:
+					// do nothing
+				}
 				a.draw(newLevel)
 			}
 		default:
@@ -287,26 +329,26 @@ func (a *App) getSinglePixelTexture(color sdl.Color) *sdl.Texture {
 type fontSize int
 
 const (
-	fontSmall fontSize = iota
-	fontMedium
-	fontLarge
+	smallFont fontSize = iota
+	mediumFont
+	largeFont
 )
 
 func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Texture {
 	var font *ttf.Font
 	switch size {
-	case fontSmall:
-		font = a.fontSmall
+	case smallFont:
+		font = a.smallFont
 		if tex, exists := a.str2TexSmall[s]; exists {
 			return tex
 		}
-	case fontMedium:
-		font = a.fontMedium
+	case mediumFont:
+		font = a.mediumFont
 		if tex, exists := a.str2TexMedium[s]; exists {
 			return tex
 		}
-	case fontLarge:
-		font = a.fontLarge
+	case largeFont:
+		font = a.largeFont
 		if tex, exists := a.str2TexLarge[s]; exists {
 			return tex
 		}
@@ -324,20 +366,25 @@ func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Tex
 	}
 
 	switch size {
-	case fontSmall:
+	case smallFont:
 		a.str2TexSmall[s] = tex
-	case fontMedium:
-		font = a.fontMedium
+	case mediumFont:
+		font = a.mediumFont
 		a.str2TexMedium[s] = tex
-	case fontLarge:
+	case largeFont:
 		a.str2TexLarge[s] = tex
 	}
 
 	return tex
 }
 
+func playRandomSound(chunks []*mix.Chunk, volume int) {
+	chunkIndex := rand.Intn(len(chunks))
+	chunks[chunkIndex].Volume(volume)
+	chunks[chunkIndex].Play(-1, 0)
+}
+
 func (a *App) draw(level *game.Level) {
-	a.r.Seed(1)
 	a.renderer.Clear()
 
 	if a.centerX == -1 && a.centerY == -1 {
@@ -434,14 +481,14 @@ func (a *App) draw(level *game.Level) {
 		H: int32(float64(a.height) * 0.75),
 	})
 
-	_, fontSizeY, _ := a.fontSmall.SizeUTF8("A")
+	_, fontSizeY, _ := a.smallFont.SizeUTF8("A")
 
 	i := level.EventPos
 	count := 0
 	for {
 		event := level.Events[i]
 		if event != "" {
-			tex := a.stringToTexture(event, fontSmall, sdl.Color{R: 255, G: 0, B: 0})
+			tex := a.stringToTexture(event, smallFont, sdl.Color{R: 255, G: 0, B: 0})
 			_, _, w, h, err := tex.Query()
 			if err != nil {
 				fmt.Println("Problem loading event: " + event)
