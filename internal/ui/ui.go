@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/chumnend/simple-rpg/internal/game"
+	"github.com/veandco/go-sdl2/mix"
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
 )
@@ -23,6 +24,11 @@ func init() {
 	}
 
 	err = ttf.Init()
+	if err != nil {
+		panic(err)
+	}
+
+	err = mix.Init(mix.INIT_OGG)
 	if err != nil {
 		panic(err)
 	}
@@ -83,6 +89,18 @@ func NewApp(game *game.Game, width, height int32) *App {
 		panic(err)
 	}
 
+	err = mix.OpenAudio(22050, mix.DEFAULT_FORMAT, 2, 4096)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open audio: %s\n", err)
+		panic(err)
+	}
+
+	music, err := mix.LoadMUS("internal/ui/assets/LittleTownRemix.ogg")
+	if err != nil {
+		panic(err)
+	}
+	music.Play(-1)
+
 	app := &App{
 		width:         width,
 		height:        height,
@@ -142,8 +160,6 @@ func (a *App) Start() {
 		select {
 		case newLevel, ok := <-a.game.LevelCh:
 			if ok {
-				a.centerX = -1
-				a.centerY = -1
 				a.draw(newLevel)
 			}
 		default:
@@ -323,7 +339,8 @@ func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Tex
 func (a *App) draw(level *game.Level) {
 	a.r.Seed(1)
 	a.renderer.Clear()
-	if a.centerX == -1 {
+
+	if a.centerX == -1 && a.centerY == -1 {
 		a.centerX = level.Player.X
 		a.centerY = level.Player.Y
 	}
@@ -331,15 +348,19 @@ func (a *App) draw(level *game.Level) {
 	// move the camera with the player
 	limit := 5
 	if level.Player.X > a.centerX+limit {
-		a.centerX++
+		diff := level.Player.X - (a.centerX + limit)
+		a.centerX += diff
 	} else if level.Player.X < a.centerX-limit {
-		a.centerX--
+		diff := (a.centerX - limit) - level.Player.X
+		a.centerX -= diff
 	}
 
 	if level.Player.Y > a.centerY+limit {
-		a.centerY++
+		diff := level.Player.Y - (a.centerY + limit)
+		a.centerY += diff
 	} else if level.Player.Y < a.centerY-limit {
-		a.centerY--
+		diff := (a.centerY - limit) - level.Player.Y
+		a.centerY -= diff
 	}
 
 	offsetX := (a.width / 2) - int32(a.centerX*32)
