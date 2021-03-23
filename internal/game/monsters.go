@@ -7,6 +7,8 @@ type Monster struct {
 
 // NewRat creates a Rat monster
 func NewRat(p Pos) *Monster {
+	items := []*Item{NewSword(Pos{})}
+
 	return &Monster{
 		Character: Character{
 			Entity: Entity{
@@ -19,6 +21,7 @@ func NewRat(p Pos) *Monster {
 			Speed:        2.0,
 			ActionPoints: 0,
 			SightRange:   10,
+			Items:        items,
 		},
 	}
 }

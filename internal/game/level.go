@@ -351,6 +351,12 @@ func (level *Level) resolveMove(pos Pos) {
 		level.LastEvent = Attack
 		level.attack(&level.Player.Character, &monster.Character)
 		if monster.Hitpoints <= 0 {
+			droppedItems := level.Items[monster.Pos]
+			for _, item := range monster.Items {
+				item.Pos = monster.Pos
+				droppedItems = append(droppedItems, item)
+			}
+			level.Items[monster.Pos] = droppedItems
 			delete(level.Monsters, monster.Pos)
 		}
 		if level.Player.Hitpoints <= 0 {
