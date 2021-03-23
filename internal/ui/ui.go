@@ -168,6 +168,7 @@ func (a *App) Start() {
 			case *sdl.QuitEvent:
 				a.game.InputCh <- &game.Input{Type: game.QuitGame}
 				return
+
 			case *sdl.KeyboardEvent:
 				var input game.Input
 
@@ -181,6 +182,8 @@ func (a *App) Start() {
 						input.Type = game.Left
 					case sdl.SCANCODE_RIGHT:
 						input.Type = game.Right
+					case sdl.SCANCODE_T:
+						input.Type = game.Take
 					default:
 						input.Type = game.None
 					}
@@ -365,11 +368,11 @@ func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Tex
 	}
 
 	switch size {
-	case smallFont:
-		a.str2TexSmall[s] = tex
-	case mediumFont:
-		font = a.mediumFont
-		a.str2TexMedium[s] = tex
+	case smallFont: // items := level.Items[p.Pos]
+	// if len(items) > 0 {
+	// 	level.moveItem(items[0], &p.Character)
+	// 	level.AddEvent("Player picked up " + items[0].Name)
+	// }
 	case largeFont:
 		a.str2TexLarge[s] = tex
 	}
@@ -473,11 +476,13 @@ func (a *App) draw(level *game.Level) {
 	}
 
 	// draw items
-	for pos, item := range level.Items {
+	for pos, items := range level.Items {
 		if level.Tiles[pos.Y][pos.X].Visible {
-			itemSrcRect := a.textureIndex[item.Symbol][0]
-			itemDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
-			a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
+			for _, item := range items {
+				itemSrcRect := a.textureIndex[item.Symbol][0]
+				itemDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+				a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
+			}
 		}
 	}
 
@@ -511,6 +516,14 @@ func (a *App) draw(level *game.Level) {
 		if i == level.EventPos {
 			break
 		}
+	}
+
+	// draw inventory
+	items := level.Items[level.Player.Pos]
+	for i, item := range items {
+		itemSrcRect := a.textureIndex[item.Symbol][0]
+		itemDestRect := sdl.Rect{X: a.width - 32 - int32(i*32), Y: a.height - 32, W: 32, H: 32}
+		a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
 	}
 
 	a.renderer.Present()

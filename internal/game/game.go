@@ -17,6 +17,7 @@ const (
 	Down
 	Left
 	Right
+	Take
 	None
 )
 
@@ -45,6 +46,7 @@ type Character struct {
 	Speed        float64
 	ActionPoints float64
 	SightRange   int
+	Items        []*Item
 }
 
 // Game represents the RPG game state
@@ -110,6 +112,16 @@ func (game *Game) handleInput(input *Input) {
 	case Right:
 		pos = Pos{level.Player.X + 1, level.Player.Y}
 		newPos = true
+	case Take:
+		items := level.Items[level.Player.Pos]
+		if len(items) > 0 {
+			for _, item := range items {
+				level.moveItem(item, &level.Player.Character)
+				level.AddEvent("Player picked up " + item.Name)
+			}
+		} else {
+			level.AddEvent("Nothing to take!")
+		}
 	default:
 		// do nothing
 	}
