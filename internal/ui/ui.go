@@ -472,6 +472,15 @@ func (a *App) draw(level *game.Level) {
 		}
 	}
 
+	// draw items
+	for pos, item := range level.Items {
+		if level.Tiles[pos.Y][pos.X].Visible {
+			itemSrcRect := a.textureIndex[item.Symbol][0]
+			itemDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+			a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
+		}
+	}
+
 	// draw event log
 	textStart := int32(float64(a.height) * 0.75)
 	a.renderer.Copy(a.eventBackground, nil, &sdl.Rect{

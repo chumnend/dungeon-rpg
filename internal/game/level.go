@@ -47,6 +47,7 @@ type Level struct {
 	Tiles     [][]Tile
 	Player    *Player
 	Monsters  map[Pos]*Monster
+	Items     map[Pos]*Item
 	Portals   map[Pos]*LevelPos
 	Events    []string
 	EventPos  int
@@ -89,6 +90,7 @@ func loadLevels() map[string]*Level {
 			Tiles:    make([][]Tile, len(lines)),
 			Player:   nil,
 			Monsters: make(map[Pos]*Monster),
+			Items:    make(map[Pos]*Item),
 			Portals:  make(map[Pos]*LevelPos),
 			Events:   make([]string, 8),
 			EventPos: 0,
@@ -123,6 +125,12 @@ func loadLevels() map[string]*Level {
 					t.Symbol = PendingTile
 				case 'd':
 					t.OverlaySymbol = DownStairTile
+					t.Symbol = PendingTile
+				case 's':
+					level.Items[pos] = NewSword(pos)
+					t.Symbol = PendingTile
+				case 'h':
+					level.Items[pos] = NewHelmet(pos)
 					t.Symbol = PendingTile
 				case '.':
 					t.Symbol = DirtTile
