@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/chumnend/simple-rpg/internal/game"
-	"github.com/chumnend/simple-rpg/internal/ui"
+	"github.com/chumnend/dungeon-rpg/internal/game"
+	"github.com/chumnend/dungeon-rpg/internal/ui"
 )
 
 func main() {
