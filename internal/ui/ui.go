@@ -41,6 +41,8 @@ type App struct {
 	centerX int
 	centerY int
 
+	state appState
+
 	r    *rand.Rand
 	game *game.Game
 
@@ -59,6 +61,13 @@ type App struct {
 	footstepSounds      []*mix.Chunk
 	doorOpenSounds      []*mix.Chunk
 }
+
+type appState int
+
+const (
+	appMain appState = iota
+	appInv
+)
 
 // NewApp returns an App struct
 func NewApp(game *game.Game, width, height int32) *App {
@@ -138,6 +147,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 		height:         height,
 		centerX:        -1,
 		centerY:        -1,
+		state:          appMain,
 		r:              r,
 		game:           game,
 		window:         window,
@@ -177,9 +187,7 @@ func (a *App) Start() {
 				var input game.Input
 
 				if e.Type == sdl.MOUSEBUTTONUP {
-					mx, my, _ := sdl.GetMouseState()
-
-					item := a.checkForItem(lastLevel, mx, my)
+					item := a.checkForItem(lastLevel, e.X, e.Y)
 					if item != nil {
 						input.Type = game.TakeItem
 						input.Item = item
@@ -201,6 +209,14 @@ func (a *App) Start() {
 						input.Type = game.Left
 					case sdl.SCANCODE_RIGHT:
 						input.Type = game.Right
+					case sdl.SCANCODE_I:
+						if a.state == appMain {
+							a.state = appInv
+						} else if a.state == appInv {
+							a.state = appMain
+						}
+
+						input.Type = game.None
 					case sdl.SCANCODE_T:
 						input.Type = game.TakeAll
 					default:
@@ -225,12 +241,19 @@ func (a *App) Start() {
 				default:
 					// do nothing
 				}
-
-				a.draw(loadedLevel)
 			}
 		default:
 			// do nothing
 		}
+
+		if a.state == appInv {
+			a.draw(lastLevel)
+			a.drawInventory(lastLevel)
+		} else {
+			a.draw(lastLevel)
+		}
+
+		a.renderer.Present()
 
 		sdl.Delay(10)
 	}
@@ -385,8 +408,15 @@ func (a *App) draw(level *game.Level) {
 		itemDestRect := a.getItemRect(i)
 		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
 	}
+}
 
-	a.renderer.Present()
+func (a *App) drawInventory(level *game.Level) {
+	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
+		X: 0,
+		Y: 0,
+		W: 500,
+		H: 500,
+	})
 }
 
 func (a *App) imgFileToTexture(filename string) *sdl.Texture {
