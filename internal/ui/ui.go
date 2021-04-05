@@ -41,9 +41,8 @@ type App struct {
 	centerX int
 	centerY int
 
-	r         *rand.Rand
-	game      *game.Game
-	lastLevel *game.Level
+	r    *rand.Rand
+	game *game.Game
 
 	window              *sdl.Window
 	renderer            *sdl.Renderer
@@ -141,7 +140,6 @@ func NewApp(game *game.Game, width, height int32) *App {
 		centerY:        -1,
 		r:              r,
 		game:           game,
-		lastLevel:      nil,
 		window:         window,
 		renderer:       renderer,
 		str2TexSmall:   make(map[string]*sdl.Texture),
@@ -164,6 +162,8 @@ func NewApp(game *game.Game, width, height int32) *App {
 
 // Start starts the application window
 func (a *App) Start() {
+	var lastLevel *game.Level
+
 	go a.game.Run()
 
 	for {
@@ -179,7 +179,7 @@ func (a *App) Start() {
 				if e.Type == sdl.MOUSEBUTTONUP {
 					mx, my, _ := sdl.GetMouseState()
 
-					item := a.checkForItem(a.lastLevel, mx, my)
+					item := a.checkForItem(lastLevel, mx, my)
 					if item != nil {
 						input.Type = game.TakeItem
 						input.Item = item
@@ -215,7 +215,7 @@ func (a *App) Start() {
 		select {
 		case loadedLevel, ok := <-a.game.LevelCh:
 			if ok {
-				a.lastLevel = loadedLevel
+				lastLevel = loadedLevel // keep track of the loaded level
 
 				switch loadedLevel.LastEvent {
 				case game.Move:
@@ -234,6 +234,159 @@ func (a *App) Start() {
 
 		sdl.Delay(10)
 	}
+}
+
+func (a *App) draw(level *game.Level) {
+	a.renderer.Clear()
+	a.r.Seed(1)
+
+	if a.centerX == -1 && a.centerY == -1 {
+		a.centerX = level.Player.X
+		a.centerY = level.Player.Y
+	}
+
+	// move the camera with the player
+	limit := 5
+	if level.Player.X > a.centerX+limit {
+		diff := level.Player.X - (a.centerX + limit)
+		a.centerX += diff
+	} else if level.Player.X < a.centerX-limit {
+		diff := (a.centerX - limit) - level.Player.X
+		a.centerX -= diff
+	}
+
+	if level.Player.Y > a.centerY+limit {
+		diff := level.Player.Y - (a.centerY + limit)
+		a.centerY += diff
+	} else if level.Player.Y < a.centerY-limit {
+		diff := (a.centerY - limit) - level.Player.Y
+		a.centerY -= diff
+	}
+
+	offsetX := (a.width / 2) - int32(a.centerX*32)
+	offsetY := (a.height / 2) - int32(a.centerY*32)
+
+	// draw floor tiles
+	for y, row := range level.Tiles {
+		for x, tile := range row {
+			if tile.Symbol == game.EmptyTile {
+				continue
+			}
+
+			srcRects := a.textureIndex[tile.Symbol]
+			srcRect := srcRects[a.r.Intn(len(srcRects))]
+
+			if tile.Visible || tile.Seen {
+				destRect := sdl.Rect{
+					X: int32(x*32) + offsetX,
+					Y: int32(y*32) + offsetY,
+					W: 32,
+					H: 32,
+				}
+
+				pos := game.Pos{X: x, Y: y}
+				if level.Debug[pos] {
+					a.textureAtlas.SetColorMod(128, 0, 0)
+				} else if tile.Seen && !tile.Visible {
+					a.textureAtlas.SetColorMod(128, 128, 128)
+				} else {
+					a.textureAtlas.SetColorMod(255, 255, 255)
+				}
+
+				a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+
+				if tile.OverlaySymbol != game.EmptyTile {
+					srcRect = a.textureIndex[tile.OverlaySymbol][0]
+					a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
+				}
+
+			}
+		}
+	}
+
+	a.textureAtlas.SetColorMod(255, 255, 255)
+
+	// draw player
+	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
+	playerDestRect := sdl.Rect{
+		X: int32(level.Player.X*32) + offsetX,
+		Y: int32(level.Player.Y*32) + offsetY,
+		W: 32,
+		H: 32,
+	}
+	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &playerDestRect)
+
+	// draw monsters
+	for pos, monster := range level.Monsters {
+		if level.Tiles[pos.Y][pos.X].Visible {
+			monsterSrcRect := a.textureIndex[monster.Symbol][0]
+			monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+			a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
+		}
+	}
+
+	// draw items
+	for pos, items := range level.Items {
+		if level.Tiles[pos.Y][pos.X].Visible {
+			for _, item := range items {
+				itemSrcRect := a.textureIndex[item.Symbol][0]
+				itemDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+				a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
+			}
+		}
+	}
+
+	// draw event log
+	textStart := int32(float64(a.height) * 0.75)
+	a.renderer.Copy(a.eventBackground, nil, &sdl.Rect{
+		X: 0,
+		Y: textStart,
+		W: int32(float64(a.width) * 0.25),
+		H: int32(float64(a.height) * 0.75),
+	})
+
+	_, fontSizeY, _ := a.smallFont.SizeUTF8("A")
+
+	i := level.EventPos
+	count := 0
+	for {
+		event := level.Events[i]
+		if event != "" {
+			tex := a.stringToTexture(event, smallFont, sdl.Color{R: 255, G: 0, B: 0})
+			_, _, w, h, err := tex.Query()
+			if err != nil {
+				fmt.Println("Problem loading event: " + event)
+			}
+			a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(count*fontSizeY) + textStart, W: w, H: h})
+		}
+
+		i = (i + 1) % (len(level.Events))
+		count++
+
+		if i == level.EventPos {
+			break
+		}
+	}
+
+	// draw inventory
+	inventoryStart := int32(float64(a.width) * 0.9)
+	inventoryWIdth := a.width - inventoryStart
+
+	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
+		X: inventoryStart,
+		Y: a.height - 32,
+		W: inventoryWIdth,
+		H: 32,
+	})
+
+	items := level.Items[level.Player.Pos]
+	for i, item := range items {
+		itemSrcRect := &a.textureIndex[item.Symbol][0]
+		itemDestRect := a.getItemRect(i)
+		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
+	}
+
+	a.renderer.Present()
 }
 
 func (a *App) imgFileToTexture(filename string) *sdl.Texture {
@@ -404,159 +557,6 @@ func playRandomSound(chunks []*mix.Chunk, volume int) {
 	chunkIndex := rand.Intn(len(chunks))
 	chunks[chunkIndex].Volume(volume)
 	chunks[chunkIndex].Play(-1, 0)
-}
-
-func (a *App) draw(level *game.Level) {
-	a.renderer.Clear()
-	a.r.Seed(1)
-
-	if a.centerX == -1 && a.centerY == -1 {
-		a.centerX = level.Player.X
-		a.centerY = level.Player.Y
-	}
-
-	// move the camera with the player
-	limit := 5
-	if level.Player.X > a.centerX+limit {
-		diff := level.Player.X - (a.centerX + limit)
-		a.centerX += diff
-	} else if level.Player.X < a.centerX-limit {
-		diff := (a.centerX - limit) - level.Player.X
-		a.centerX -= diff
-	}
-
-	if level.Player.Y > a.centerY+limit {
-		diff := level.Player.Y - (a.centerY + limit)
-		a.centerY += diff
-	} else if level.Player.Y < a.centerY-limit {
-		diff := (a.centerY - limit) - level.Player.Y
-		a.centerY -= diff
-	}
-
-	offsetX := (a.width / 2) - int32(a.centerX*32)
-	offsetY := (a.height / 2) - int32(a.centerY*32)
-
-	// draw floor tiles
-	for y, row := range level.Tiles {
-		for x, tile := range row {
-			if tile.Symbol == game.EmptyTile {
-				continue
-			}
-
-			srcRects := a.textureIndex[tile.Symbol]
-			srcRect := srcRects[a.r.Intn(len(srcRects))]
-
-			if tile.Visible || tile.Seen {
-				destRect := sdl.Rect{
-					X: int32(x*32) + offsetX,
-					Y: int32(y*32) + offsetY,
-					W: 32,
-					H: 32,
-				}
-
-				pos := game.Pos{X: x, Y: y}
-				if level.Debug[pos] {
-					a.textureAtlas.SetColorMod(128, 0, 0)
-				} else if tile.Seen && !tile.Visible {
-					a.textureAtlas.SetColorMod(128, 128, 128)
-				} else {
-					a.textureAtlas.SetColorMod(255, 255, 255)
-				}
-
-				a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
-
-				if tile.OverlaySymbol != game.EmptyTile {
-					srcRect = a.textureIndex[tile.OverlaySymbol][0]
-					a.renderer.Copy(a.textureAtlas, &srcRect, &destRect)
-				}
-
-			}
-		}
-	}
-
-	a.textureAtlas.SetColorMod(255, 255, 255)
-
-	// draw player
-	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
-	playerDestRect := sdl.Rect{
-		X: int32(level.Player.X*32) + offsetX,
-		Y: int32(level.Player.Y*32) + offsetY,
-		W: 32,
-		H: 32,
-	}
-	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &playerDestRect)
-
-	// draw monsters
-	for pos, monster := range level.Monsters {
-		if level.Tiles[pos.Y][pos.X].Visible {
-			monsterSrcRect := a.textureIndex[monster.Symbol][0]
-			monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
-			a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
-		}
-	}
-
-	// draw items
-	for pos, items := range level.Items {
-		if level.Tiles[pos.Y][pos.X].Visible {
-			for _, item := range items {
-				itemSrcRect := a.textureIndex[item.Symbol][0]
-				itemDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
-				a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
-			}
-		}
-	}
-
-	// draw event log
-	textStart := int32(float64(a.height) * 0.75)
-	a.renderer.Copy(a.eventBackground, nil, &sdl.Rect{
-		X: 0,
-		Y: textStart,
-		W: int32(float64(a.width) * 0.25),
-		H: int32(float64(a.height) * 0.75),
-	})
-
-	_, fontSizeY, _ := a.smallFont.SizeUTF8("A")
-
-	i := level.EventPos
-	count := 0
-	for {
-		event := level.Events[i]
-		if event != "" {
-			tex := a.stringToTexture(event, smallFont, sdl.Color{R: 255, G: 0, B: 0})
-			_, _, w, h, err := tex.Query()
-			if err != nil {
-				fmt.Println("Problem loading event: " + event)
-			}
-			a.renderer.Copy(tex, nil, &sdl.Rect{X: 0, Y: int32(count*fontSizeY) + textStart, W: w, H: h})
-		}
-
-		i = (i + 1) % (len(level.Events))
-		count++
-
-		if i == level.EventPos {
-			break
-		}
-	}
-
-	// draw inventory
-	inventoryStart := int32(float64(a.width) * 0.9)
-	inventoryWIdth := a.width - inventoryStart
-
-	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
-		X: inventoryStart,
-		Y: a.height - 32,
-		W: inventoryWIdth,
-		H: 32,
-	})
-
-	items := level.Items[level.Player.Pos]
-	for i, item := range items {
-		itemSrcRect := &a.textureIndex[item.Symbol][0]
-		itemDestRect := a.getItemRect(i)
-		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
-	}
-
-	a.renderer.Present()
 }
 
 func (a *App) getItemRect(i int) *sdl.Rect {
