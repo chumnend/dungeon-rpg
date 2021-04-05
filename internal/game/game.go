@@ -17,13 +17,15 @@ const (
 	Down
 	Left
 	Right
-	Take
+	TakeItem
+	TakeAll
 	None
 )
 
-// Input represents the key board input
+// Input represents the key board input (Tagged Union / DU)
 type Input struct {
 	Type InputType
+	Item *Item
 }
 
 // Pos reprsents the x an y coordinate
@@ -112,7 +114,9 @@ func (game *Game) handleInput(input *Input) {
 	case Right:
 		pos = Pos{level.Player.X + 1, level.Player.Y}
 		newPos = true
-	case Take:
+	case TakeItem:
+		level.moveItem(input.Item, &level.Player.Character)
+	case TakeAll:
 		items := level.Items[level.Player.Pos]
 		if len(items) > 0 {
 			for _, item := range items {

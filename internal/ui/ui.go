@@ -34,29 +34,38 @@ func init() {
 	}
 }
 
+type mouseState struct {
+	leftButton  bool
+	rightButton bool
+	pos         game.Pos
+}
+
 // App represents the application window that runs the RPG game
 type App struct {
 	width   int32
 	height  int32
 	centerX int
 	centerY int
+	mouse   *mouseState
 
-	r    *rand.Rand
-	game *game.Game
+	r         *rand.Rand
+	game      *game.Game
+	lastLevel *game.Level
 
-	window          *sdl.Window
-	renderer        *sdl.Renderer
-	textureAtlas    *sdl.Texture
-	textureIndex    map[rune][]sdl.Rect
-	eventBackground *sdl.Texture
-	str2TexSmall    map[string]*sdl.Texture
-	str2TexMedium   map[string]*sdl.Texture
-	str2TexLarge    map[string]*sdl.Texture
-	smallFont       *ttf.Font
-	mediumFont      *ttf.Font
-	largeFont       *ttf.Font
-	footstepSounds  []*mix.Chunk
-	doorOpenSounds  []*mix.Chunk
+	window              *sdl.Window
+	renderer            *sdl.Renderer
+	textureAtlas        *sdl.Texture
+	textureIndex        map[rune][]sdl.Rect
+	eventBackground     *sdl.Texture
+	inventoryBackground *sdl.Texture
+	str2TexSmall        map[string]*sdl.Texture
+	str2TexMedium       map[string]*sdl.Texture
+	str2TexLarge        map[string]*sdl.Texture
+	smallFont           *ttf.Font
+	mediumFont          *ttf.Font
+	largeFont           *ttf.Font
+	footstepSounds      []*mix.Chunk
+	doorOpenSounds      []*mix.Chunk
 }
 
 // NewApp returns an App struct
@@ -137,8 +146,10 @@ func NewApp(game *game.Game, width, height int32) *App {
 		height:         height,
 		centerX:        -1,
 		centerY:        -1,
+		mouse:          &mouseState{},
 		r:              r,
 		game:           game,
+		lastLevel:      nil,
 		window:         window,
 		renderer:       renderer,
 		str2TexSmall:   make(map[string]*sdl.Texture),
@@ -154,6 +165,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles/tiles.png")
 	app.textureIndex = app.loadTextureIndex("internal/ui/assets/atlas-index.txt")
 	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
+	app.inventoryBackground = app.getSinglePixelTexture(sdl.Color{R: 255, G: 0, B: 0, A: 128})
 
 	return app
 }
@@ -169,6 +181,30 @@ func (a *App) Start() {
 				a.game.InputCh <- &game.Input{Type: game.QuitGame}
 				return
 
+			case *sdl.MouseButtonEvent:
+				var input game.Input
+
+				if e.Type == sdl.MOUSEBUTTONUP {
+					mouseX, mouseY, mouseButtonState := sdl.GetMouseState()
+					leftButton := mouseButtonState & sdl.ButtonLMask()
+					rightButton := mouseButtonState & sdl.ButtonRMask()
+
+					var result mouseState
+					result.pos = game.Pos{X: int(mouseX), Y: int(mouseY)}
+					result.leftButton = !(leftButton == 0)
+					result.rightButton = !(rightButton == 0)
+
+					a.mouse = &result
+
+					item := a.checkForItem(a.lastLevel)
+					if item != nil {
+						input.Type = game.TakeItem
+						input.Item = item
+
+						a.game.InputCh <- &input
+					}
+				}
+
 			case *sdl.KeyboardEvent:
 				var input game.Input
 
@@ -183,7 +219,7 @@ func (a *App) Start() {
 					case sdl.SCANCODE_RIGHT:
 						input.Type = game.Right
 					case sdl.SCANCODE_T:
-						input.Type = game.Take
+						input.Type = game.TakeAll
 					default:
 						input.Type = game.None
 					}
@@ -194,9 +230,11 @@ func (a *App) Start() {
 		}
 
 		select {
-		case newLevel, ok := <-a.game.LevelCh:
+		case loadedLevel, ok := <-a.game.LevelCh:
 			if ok {
-				switch newLevel.LastEvent {
+				a.lastLevel = loadedLevel
+
+				switch loadedLevel.LastEvent {
 				case game.Move:
 					playRandomSound(a.footstepSounds, 64)
 				case game.DoorOpen:
@@ -204,7 +242,8 @@ func (a *App) Start() {
 				default:
 					// do nothing
 				}
-				a.draw(newLevel)
+
+				a.draw(loadedLevel)
 			}
 		default:
 			// do nothing
@@ -386,6 +425,26 @@ func playRandomSound(chunks []*mix.Chunk, volume int) {
 	chunks[chunkIndex].Play(-1, 0)
 }
 
+func (a *App) checkForItem(level *game.Level) *game.Item {
+	mousePos := a.mouse.pos
+	mouseRect := &sdl.Rect{
+		X: int32(mousePos.X),
+		Y: int32(mousePos.Y),
+		W: 1,
+		H: 1,
+	}
+
+	items := level.Items[level.Player.Pos]
+	for i, item := range items {
+		itemRect := a.getItemRect(i)
+		if itemRect.HasIntersection(mouseRect) {
+			return item
+		}
+	}
+
+	return nil
+}
+
 func (a *App) draw(level *game.Level) {
 	a.renderer.Clear()
 	a.r.Seed(1)
@@ -519,12 +578,31 @@ func (a *App) draw(level *game.Level) {
 	}
 
 	// draw inventory
+	inventoryStart := int32(float64(a.width) * 0.9)
+	inventoryWIdth := a.width - inventoryStart
+
+	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
+		X: inventoryStart,
+		Y: a.height - 32,
+		W: inventoryWIdth,
+		H: 32,
+	})
+
 	items := level.Items[level.Player.Pos]
 	for i, item := range items {
-		itemSrcRect := a.textureIndex[item.Symbol][0]
-		itemDestRect := sdl.Rect{X: a.width - 32 - int32(i*32), Y: a.height - 32, W: 32, H: 32}
-		a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
+		itemSrcRect := &a.textureIndex[item.Symbol][0]
+		itemDestRect := a.getItemRect(i)
+		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
 	}
 
 	a.renderer.Present()
+}
+
+func (a *App) getItemRect(i int) *sdl.Rect {
+	return &sdl.Rect{
+		X: a.width - 32 - int32(i*32),
+		Y: a.height - 32,
+		W: 32,
+		H: 32,
+	}
 }
