@@ -34,19 +34,12 @@ func init() {
 	}
 }
 
-type mouseState struct {
-	leftButton  bool
-	rightButton bool
-	pos         game.Pos
-}
-
 // App represents the application window that runs the RPG game
 type App struct {
 	width   int32
 	height  int32
 	centerX int
 	centerY int
-	mouse   *mouseState
 
 	r         *rand.Rand
 	game      *game.Game
@@ -146,7 +139,6 @@ func NewApp(game *game.Game, width, height int32) *App {
 		height:         height,
 		centerX:        -1,
 		centerY:        -1,
-		mouse:          &mouseState{},
 		r:              r,
 		game:           game,
 		lastLevel:      nil,
@@ -185,18 +177,9 @@ func (a *App) Start() {
 				var input game.Input
 
 				if e.Type == sdl.MOUSEBUTTONUP {
-					mouseX, mouseY, mouseButtonState := sdl.GetMouseState()
-					leftButton := mouseButtonState & sdl.ButtonLMask()
-					rightButton := mouseButtonState & sdl.ButtonRMask()
+					mx, my, _ := sdl.GetMouseState()
 
-					var result mouseState
-					result.pos = game.Pos{X: int(mouseX), Y: int(mouseY)}
-					result.leftButton = !(leftButton == 0)
-					result.rightButton = !(rightButton == 0)
-
-					a.mouse = &result
-
-					item := a.checkForItem(a.lastLevel)
+					item := a.checkForItem(a.lastLevel, mx, my)
 					if item != nil {
 						input.Type = game.TakeItem
 						input.Item = item
@@ -339,7 +322,6 @@ func (a *App) loadTextureIndex(filename string) map[rune][]sdl.Rect {
 			}
 		}
 
-		// rect := sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32}
 		textureIndex[tile] = rects
 	}
 
@@ -407,11 +389,10 @@ func (a *App) stringToTexture(s string, size fontSize, color sdl.Color) *sdl.Tex
 	}
 
 	switch size {
-	case smallFont: // items := level.Items[p.Pos]
-	// if len(items) > 0 {
-	// 	level.moveItem(items[0], &p.Character)
-	// 	level.AddEvent("Player picked up " + items[0].Name)
-	// }
+	case smallFont:
+		a.str2TexSmall[s] = tex
+	case mediumFont:
+		a.str2TexMedium[s] = tex
 	case largeFont:
 		a.str2TexLarge[s] = tex
 	}
@@ -423,26 +404,6 @@ func playRandomSound(chunks []*mix.Chunk, volume int) {
 	chunkIndex := rand.Intn(len(chunks))
 	chunks[chunkIndex].Volume(volume)
 	chunks[chunkIndex].Play(-1, 0)
-}
-
-func (a *App) checkForItem(level *game.Level) *game.Item {
-	mousePos := a.mouse.pos
-	mouseRect := &sdl.Rect{
-		X: int32(mousePos.X),
-		Y: int32(mousePos.Y),
-		W: 1,
-		H: 1,
-	}
-
-	items := level.Items[level.Player.Pos]
-	for i, item := range items {
-		itemRect := a.getItemRect(i)
-		if itemRect.HasIntersection(mouseRect) {
-			return item
-		}
-	}
-
-	return nil
 }
 
 func (a *App) draw(level *game.Level) {
@@ -605,4 +566,23 @@ func (a *App) getItemRect(i int) *sdl.Rect {
 		W: 32,
 		H: 32,
 	}
+}
+
+func (a *App) checkForItem(level *game.Level, mx int32, my int32) *game.Item {
+	mouseRect := &sdl.Rect{
+		X: mx,
+		Y: my,
+		W: 1,
+		H: 1,
+	}
+
+	items := level.Items[level.Player.Pos]
+	for i, item := range items {
+		itemRect := a.getItemRect(i)
+		if itemRect.HasIntersection(mouseRect) {
+			return item
+		}
+	}
+
+	return nil
 }
