@@ -34,6 +34,9 @@ func init() {
 	}
 }
 
+const spriteHeight = 32
+const itemSizeRatio = 0.033
+
 // App represents the application window that runs the RPG game
 type App struct {
 	width   int32
@@ -81,7 +84,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 		panic(err)
 	}
 
-	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
+	// sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
 
 	r := rand.New(rand.NewSource(1))
 
@@ -165,7 +168,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles/tiles.png")
 	app.textureIndex = app.loadTextureIndex("internal/ui/assets/atlas-index.txt")
 	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
-	app.inventoryBackground = app.getSinglePixelTexture(sdl.Color{R: 255, G: 0, B: 0, A: 128})
+	app.inventoryBackground = app.getSinglePixelTexture(sdl.Color{R: 149, G: 84, B: 19, A: 200})
 
 	return app
 }
@@ -187,12 +190,23 @@ func (a *App) Start() {
 				var input game.Input
 
 				if e.Type == sdl.MOUSEBUTTONUP {
-					item := a.checkForItem(lastLevel, e.X, e.Y)
-					if item != nil {
-						input.Type = game.TakeItem
-						input.Item = item
+					if a.state == appInv {
+						item := a.checkForInventoryItem(lastLevel, e.X, e.Y)
+						if item != nil {
+							fmt.Println("Clicked on " + item.Name + " in inventory")
 
-						a.game.InputCh <- &input
+							input.Type = game.None
+
+							a.game.InputCh <- &input
+						}
+					} else {
+						item := a.checkForItem(lastLevel, e.X, e.Y)
+						if item != nil {
+							input.Type = game.TakeItem
+							input.Item = item
+
+							a.game.InputCh <- &input
+						}
 					}
 				}
 
@@ -286,8 +300,8 @@ func (a *App) draw(level *game.Level) {
 		a.centerY -= diff
 	}
 
-	offsetX := (a.width / 2) - int32(a.centerX*32)
-	offsetY := (a.height / 2) - int32(a.centerY*32)
+	offsetX := (a.width / 2) - int32(a.centerX*spriteHeight)
+	offsetY := (a.height / 2) - int32(a.centerY*spriteHeight)
 
 	// draw floor tiles
 	for y, row := range level.Tiles {
@@ -301,10 +315,10 @@ func (a *App) draw(level *game.Level) {
 
 			if tile.Visible || tile.Seen {
 				destRect := sdl.Rect{
-					X: int32(x*32) + offsetX,
-					Y: int32(y*32) + offsetY,
-					W: 32,
-					H: 32,
+					X: int32(x*spriteHeight) + offsetX,
+					Y: int32(y*spriteHeight) + offsetY,
+					W: spriteHeight,
+					H: spriteHeight,
 				}
 
 				pos := game.Pos{X: x, Y: y}
@@ -332,10 +346,10 @@ func (a *App) draw(level *game.Level) {
 	// draw player
 	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
 	playerDestRect := sdl.Rect{
-		X: int32(level.Player.X*32) + offsetX,
-		Y: int32(level.Player.Y*32) + offsetY,
-		W: 32,
-		H: 32,
+		X: int32(level.Player.X*spriteHeight) + offsetX,
+		Y: int32(level.Player.Y*spriteHeight) + offsetY,
+		W: spriteHeight,
+		H: spriteHeight,
 	}
 	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &playerDestRect)
 
@@ -343,17 +357,27 @@ func (a *App) draw(level *game.Level) {
 	for pos, monster := range level.Monsters {
 		if level.Tiles[pos.Y][pos.X].Visible {
 			monsterSrcRect := a.textureIndex[monster.Symbol][0]
-			monsterDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+			monsterDestRect := sdl.Rect{
+				X: int32(pos.X)*spriteHeight + offsetX,
+				Y: int32(pos.Y)*spriteHeight + offsetY,
+				W: spriteHeight,
+				H: spriteHeight,
+			}
 			a.renderer.Copy(a.textureAtlas, &monsterSrcRect, &monsterDestRect)
 		}
 	}
 
-	// draw items
+	// draw items on ground
 	for pos, items := range level.Items {
 		if level.Tiles[pos.Y][pos.X].Visible {
 			for _, item := range items {
 				itemSrcRect := a.textureIndex[item.Symbol][0]
-				itemDestRect := sdl.Rect{X: int32(pos.X)*32 + offsetX, Y: int32(pos.Y)*32 + offsetY, W: 32, H: 32}
+				itemDestRect := sdl.Rect{
+					X: int32(pos.X)*spriteHeight + offsetX,
+					Y: int32(pos.Y)*spriteHeight + offsetY,
+					W: spriteHeight,
+					H: spriteHeight,
+				}
 				a.renderer.Copy(a.textureAtlas, &itemSrcRect, &itemDestRect)
 			}
 		}
@@ -391,15 +415,16 @@ func (a *App) draw(level *game.Level) {
 		}
 	}
 
-	// draw inventory
+	// draw items on pickup bar
 	inventoryStart := int32(float64(a.width) * 0.9)
 	inventoryWIdth := a.width - inventoryStart
+	itemSize := int32(itemSizeRatio * float32(a.width))
 
 	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
 		X: inventoryStart,
-		Y: a.height - 32,
+		Y: a.height - itemSize,
 		W: inventoryWIdth,
-		H: 32,
+		H: itemSize,
 	})
 
 	items := level.Items[level.Player.Pos]
@@ -411,12 +436,31 @@ func (a *App) draw(level *game.Level) {
 }
 
 func (a *App) drawInventory(level *game.Level) {
+	inventoryWidth := int32(a.width / 2)
+	inventoryHeight := int32(a.height * 3 / 4)
+	offsetX := (a.width - inventoryWidth) / 2
+	offsetY := (a.height - inventoryHeight) / 2
+
 	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
-		X: 0,
-		Y: 0,
-		W: 500,
-		H: 500,
+		X: offsetX,
+		Y: offsetY,
+		W: inventoryWidth,
+		H: inventoryHeight,
 	})
+
+	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
+	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &sdl.Rect{
+		X: offsetX + offsetX/2,
+		Y: offsetY + offsetY/2,
+		W: inventoryWidth / 2,
+		H: inventoryHeight / 2,
+	})
+
+	for i, item := range level.Player.Items {
+		itemSrcRect := &a.textureIndex[item.Symbol][0]
+		itemDestRect := a.getInventoryRect(i)
+		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
+	}
 }
 
 func (a *App) imgFileToTexture(filename string) *sdl.Texture {
@@ -497,7 +541,7 @@ func (a *App) loadTextureIndex(filename string) map[rune][]sdl.Rect {
 
 		rects := make([]sdl.Rect, 0)
 		for i := 0; i < int(variation); i++ {
-			rects = append(rects, sdl.Rect{X: int32(x * 32), Y: int32(y * 32), W: 32, H: 32})
+			rects = append(rects, sdl.Rect{X: int32(x * spriteHeight), Y: int32(y * spriteHeight), W: spriteHeight, H: spriteHeight})
 			x = (x + 1)
 			if x > 62 {
 				x = 0
@@ -590,11 +634,13 @@ func playRandomSound(chunks []*mix.Chunk, volume int) {
 }
 
 func (a *App) getItemRect(i int) *sdl.Rect {
+	itemSize := int32(itemSizeRatio * float32(a.width))
+
 	return &sdl.Rect{
-		X: a.width - 32 - int32(i*32),
-		Y: a.height - 32,
-		W: 32,
-		H: 32,
+		X: a.width - itemSize - int32(i)*itemSize,
+		Y: a.height - itemSize,
+		W: itemSize,
+		H: itemSize,
 	}
 }
 
@@ -609,6 +655,40 @@ func (a *App) checkForItem(level *game.Level, mx int32, my int32) *game.Item {
 	items := level.Items[level.Player.Pos]
 	for i, item := range items {
 		itemRect := a.getItemRect(i)
+		if itemRect.HasIntersection(mouseRect) {
+			return item
+		}
+	}
+
+	return nil
+}
+
+func (a *App) getInventoryRect(i int) *sdl.Rect {
+	inventoryWidth := int32(a.width / 2)
+	inventoryHeight := int32(a.height * 3 / 4)
+	offsetX := (a.width - inventoryWidth) / 2
+	offsetY := (a.height - inventoryHeight) / 2
+	itemSize := int32(itemSizeRatio * float32(a.width))
+
+	return &sdl.Rect{
+		X: offsetX + int32(i)*itemSize,
+		Y: offsetY + inventoryHeight - itemSize,
+		W: itemSize,
+		H: itemSize,
+	}
+}
+
+func (a *App) checkForInventoryItem(level *game.Level, mx int32, my int32) *game.Item {
+	mouseRect := &sdl.Rect{
+		X: mx,
+		Y: my,
+		W: 1,
+		H: 1,
+	}
+
+	items := level.Player.Items
+	for i, item := range items {
+		itemRect := a.getInventoryRect(i)
 		if itemRect.HasIntersection(mouseRect) {
 			return item
 		}
