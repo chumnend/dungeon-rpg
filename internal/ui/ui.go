@@ -153,6 +153,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 		state:          mainState,
 		r:              r,
 		game:           game,
+		dragged:        nil,
 		window:         window,
 		renderer:       renderer,
 		str2TexSmall:   make(map[string]*sdl.Texture),
@@ -192,7 +193,7 @@ func (a *App) Start() {
 					var input game.Input
 
 					if e.Type == sdl.MOUSEBUTTONUP {
-						item := a.checkForItem(lastLevel, e.X, e.Y)
+						item := a.checkForFloorItem(lastLevel, e.X, e.Y)
 						if item != nil {
 							input.Type = game.TakeItem
 							input.Item = item
@@ -202,6 +203,8 @@ func (a *App) Start() {
 					}
 
 				case inventoryState:
+					var input game.Input
+
 					if e.Type == sdl.MOUSEBUTTONDOWN {
 						// look for drag event if in inventory
 						item := a.checkForInventoryItem(lastLevel, e.X, e.Y)
@@ -211,7 +214,17 @@ func (a *App) Start() {
 					}
 
 					if e.Type == sdl.MOUSEBUTTONUP {
-						a.dragged = nil
+						if a.dragged != nil {
+							shouldDrop := a.checkForDropItem(lastLevel, e.X, e.Y)
+							if shouldDrop {
+								input.Type = game.DropItem
+								input.Item = a.dragged
+
+								a.game.InputCh <- &input
+							}
+
+							a.dragged = nil
+						}
 					}
 				}
 
@@ -430,32 +443,26 @@ func (a *App) draw(level *game.Level) {
 	items := level.Items[level.Player.Pos]
 	for i, item := range items {
 		itemSrcRect := &a.textureIndex[item.Symbol][0]
-		itemDestRect := a.getItemRect(i)
+		itemDestRect := a.getPickupItemRect(i)
 		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
 	}
 }
 
 func (a *App) drawInventory(level *game.Level) {
-	inventoryWidth := int32(a.width / 2)
-	inventoryHeight := int32(a.height * 3 / 4)
-	offsetX := (a.width - inventoryWidth) / 2
-	offsetY := (a.height - inventoryHeight) / 2
+	// draw inventory backdrop
+	inventoryRect := a.getInventoryBackdropRect()
+	a.renderer.Copy(a.inventoryBackground, nil, inventoryRect)
 
-	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
-		X: offsetX,
-		Y: offsetY,
-		W: inventoryWidth,
-		H: inventoryHeight,
-	})
-
+	// draw player in inventory
 	playerSrcRect := a.textureIndex[level.Player.Symbol][0]
 	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &sdl.Rect{
-		X: offsetX + offsetX/2,
-		Y: offsetY + offsetY/2,
-		W: inventoryWidth / 2,
-		H: inventoryHeight / 2,
+		X: inventoryRect.X + inventoryRect.X/2,
+		Y: inventoryRect.Y + inventoryRect.Y/2,
+		W: inventoryRect.W / 2,
+		H: inventoryRect.H / 2,
 	})
 
+	// draw items in inventory
 	for i, item := range level.Player.Items {
 		itemSrcRect := &a.textureIndex[item.Symbol][0]
 
@@ -470,7 +477,7 @@ func (a *App) drawInventory(level *game.Level) {
 			}
 			a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
 		} else {
-			itemDestRect := a.getInventoryRect(i)
+			itemDestRect := a.getInventoryItemRect(i)
 			a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
 		}
 	}
@@ -646,7 +653,7 @@ func playRandomSound(chunks []*mix.Chunk, volume int) {
 	chunks[chunkIndex].Play(-1, 0)
 }
 
-func (a *App) getItemRect(i int) *sdl.Rect {
+func (a *App) getPickupItemRect(i int) *sdl.Rect {
 	itemSize := int32(itemSizeRatio * float32(a.width))
 
 	return &sdl.Rect{
@@ -657,7 +664,33 @@ func (a *App) getItemRect(i int) *sdl.Rect {
 	}
 }
 
-func (a *App) checkForItem(level *game.Level, mx int32, my int32) *game.Item {
+func (a *App) getInventoryBackdropRect() *sdl.Rect {
+	inventoryWidth := int32(a.width / 2)
+	inventoryHeight := int32(a.height * 3 / 4)
+	offsetX := (a.width - inventoryWidth) / 2
+	offsetY := (a.height - inventoryHeight) / 2
+
+	return &sdl.Rect{
+		X: offsetX,
+		Y: offsetY,
+		W: inventoryWidth,
+		H: inventoryHeight,
+	}
+}
+
+func (a *App) getInventoryItemRect(i int) *sdl.Rect {
+	inventoryRect := a.getInventoryBackdropRect()
+	itemSize := int32(itemSizeRatio * float32(a.width))
+
+	return &sdl.Rect{
+		X: inventoryRect.X + int32(i)*itemSize,
+		Y: inventoryRect.Y + inventoryRect.H - itemSize,
+		W: itemSize,
+		H: itemSize,
+	}
+}
+
+func (a *App) checkForFloorItem(level *game.Level, mx int32, my int32) *game.Item {
 	mouseRect := &sdl.Rect{
 		X: mx,
 		Y: my,
@@ -667,28 +700,13 @@ func (a *App) checkForItem(level *game.Level, mx int32, my int32) *game.Item {
 
 	items := level.Items[level.Player.Pos]
 	for i, item := range items {
-		itemRect := a.getItemRect(i)
+		itemRect := a.getPickupItemRect(i)
 		if itemRect.HasIntersection(mouseRect) {
 			return item
 		}
 	}
 
 	return nil
-}
-
-func (a *App) getInventoryRect(i int) *sdl.Rect {
-	inventoryWidth := int32(a.width / 2)
-	inventoryHeight := int32(a.height * 3 / 4)
-	offsetX := (a.width - inventoryWidth) / 2
-	offsetY := (a.height - inventoryHeight) / 2
-	itemSize := int32(itemSizeRatio * float32(a.width))
-
-	return &sdl.Rect{
-		X: offsetX + int32(i)*itemSize,
-		Y: offsetY + inventoryHeight - itemSize,
-		W: itemSize,
-		H: itemSize,
-	}
 }
 
 func (a *App) checkForInventoryItem(level *game.Level, mx int32, my int32) *game.Item {
@@ -701,13 +719,29 @@ func (a *App) checkForInventoryItem(level *game.Level, mx int32, my int32) *game
 
 	items := level.Player.Items
 	for i, item := range items {
-		itemRect := a.getInventoryRect(i)
+		itemRect := a.getInventoryItemRect(i)
 		if itemRect.HasIntersection(mouseRect) {
 			return item
 		}
 	}
 
 	return nil
+}
+
+func (a *App) checkForDropItem(level *game.Level, mx int32, my int32) bool {
+	mouseRect := &sdl.Rect{
+		X: mx,
+		Y: my,
+		W: 1,
+		H: 1,
+	}
+
+	inventoryRect := a.getInventoryBackdropRect()
+	if !inventoryRect.HasIntersection(mouseRect) {
+		return true
+	}
+
+	return false
 }
 
 func (a *App) toggleInventory() {

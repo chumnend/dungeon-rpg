@@ -335,14 +335,26 @@ func (level *Level) attack(c1 *Character, c2 *Character) {
 
 func (level *Level) moveItem(targetItem *Item, character *Character) {
 	pos := character.Pos
-	items := level.Items[pos]
-	for i, item := range items {
+
+	for i, item := range level.Items[pos] {
 		if item == targetItem {
-			character.Items = append(character.Items, item)
-			items = append(items[:i], items[i+1:]...)
-			level.Items[pos] = items
+			level.Items[pos] = append(level.Items[pos][:i], level.Items[pos][i+1:]...)
 		}
 	}
+
+	character.Items = append(character.Items, targetItem)
+}
+
+func (level *Level) dropItem(targetItem *Item, character *Character) {
+	pos := character.Pos
+
+	for i, item := range character.Items {
+		if item == targetItem {
+			character.Items = append(character.Items[:i], character.Items[i+1:]...)
+		}
+	}
+
+	level.Items[pos] = append(level.Items[pos], targetItem)
 }
 
 func (level *Level) resolveMove(pos Pos) {

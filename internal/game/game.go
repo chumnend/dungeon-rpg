@@ -18,6 +18,7 @@ const (
 	Left
 	Right
 	TakeItem
+	DropItem
 	TakeAll
 	None
 )
@@ -116,6 +117,8 @@ func (game *Game) handleInput(input *Input) {
 		newPos = true
 	case TakeItem:
 		level.moveItem(input.Item, &level.Player.Character)
+	case DropItem:
+		level.dropItem(input.Item, &level.Player.Character)
 	case TakeAll:
 		items := level.Items[level.Player.Pos]
 		if len(items) > 0 {
