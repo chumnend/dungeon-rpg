@@ -44,10 +44,10 @@ type App struct {
 	centerX int
 	centerY int
 
-	state appState
-
-	r    *rand.Rand
-	game *game.Game
+	state   appState
+	r       *rand.Rand
+	game    *game.Game
+	dragged *game.Item
 
 	window              *sdl.Window
 	renderer            *sdl.Renderer
@@ -68,8 +68,8 @@ type App struct {
 type appState int
 
 const (
-	appMain appState = iota
-	appInv
+	mainState appState = iota
+	inventoryState
 )
 
 // NewApp returns an App struct
@@ -150,7 +150,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 		height:         height,
 		centerX:        -1,
 		centerY:        -1,
-		state:          appMain,
+		state:          mainState,
 		r:              r,
 		game:           game,
 		window:         window,
@@ -187,19 +187,11 @@ func (a *App) Start() {
 				return
 
 			case *sdl.MouseButtonEvent:
-				var input game.Input
+				switch a.state {
+				case mainState:
+					var input game.Input
 
-				if e.Type == sdl.MOUSEBUTTONUP {
-					if a.state == appInv {
-						item := a.checkForInventoryItem(lastLevel, e.X, e.Y)
-						if item != nil {
-							fmt.Println("Clicked on " + item.Name + " in inventory")
-
-							input.Type = game.None
-
-							a.game.InputCh <- &input
-						}
-					} else {
+					if e.Type == sdl.MOUSEBUTTONUP {
 						item := a.checkForItem(lastLevel, e.X, e.Y)
 						if item != nil {
 							input.Type = game.TakeItem
@@ -207,6 +199,19 @@ func (a *App) Start() {
 
 							a.game.InputCh <- &input
 						}
+					}
+
+				case inventoryState:
+					if e.Type == sdl.MOUSEBUTTONDOWN {
+						// look for drag event if in inventory
+						item := a.checkForInventoryItem(lastLevel, e.X, e.Y)
+						if item != nil {
+							a.dragged = item
+						}
+					}
+
+					if e.Type == sdl.MOUSEBUTTONUP {
+						a.dragged = nil
 					}
 				}
 
@@ -224,12 +229,7 @@ func (a *App) Start() {
 					case sdl.SCANCODE_RIGHT:
 						input.Type = game.Right
 					case sdl.SCANCODE_I:
-						if a.state == appMain {
-							a.state = appInv
-						} else if a.state == appInv {
-							a.state = appMain
-						}
-
+						a.toggleInventory()
 						input.Type = game.None
 					case sdl.SCANCODE_T:
 						input.Type = game.TakeAll
@@ -260,7 +260,7 @@ func (a *App) Start() {
 			// do nothing
 		}
 
-		if a.state == appInv {
+		if a.state == inventoryState {
 			a.draw(lastLevel)
 			a.drawInventory(lastLevel)
 		} else {
@@ -458,8 +458,21 @@ func (a *App) drawInventory(level *game.Level) {
 
 	for i, item := range level.Player.Items {
 		itemSrcRect := &a.textureIndex[item.Symbol][0]
-		itemDestRect := a.getInventoryRect(i)
-		a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
+
+		if item == a.dragged {
+			itemSize := int32(itemSizeRatio * float32(a.width))
+			mx, my, _ := sdl.GetMouseState()
+			itemDestRect := &sdl.Rect{
+				X: mx - itemSize/2,
+				Y: my - itemSize/2,
+				W: itemSize,
+				H: itemSize,
+			}
+			a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
+		} else {
+			itemDestRect := a.getInventoryRect(i)
+			a.renderer.Copy(a.textureAtlas, itemSrcRect, itemDestRect)
+		}
 	}
 }
 
@@ -695,4 +708,13 @@ func (a *App) checkForInventoryItem(level *game.Level, mx int32, my int32) *game
 	}
 
 	return nil
+}
+
+func (a *App) toggleInventory() {
+	if a.state == mainState {
+		a.state = inventoryState
+	} else if a.state == inventoryState {
+		a.dragged = nil
+		a.state = mainState
+	}
 }
