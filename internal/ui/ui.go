@@ -183,27 +183,34 @@ func (a *App) Start() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch e := event.(type) {
 			case *sdl.QuitEvent:
-				a.game.InputCh <- &game.Input{Type: game.QuitGame}
+				input := game.Input{
+					Type: game.QuitGame,
+				}
+
+				a.game.InputCh <- &input
 				return
 
 			// check mouse events
 			case *sdl.MouseButtonEvent:
 				switch a.state {
 				case mainState:
-					var input game.Input
+					input := game.Input{
+						Type: game.None,
+					}
 
 					if e.Type == sdl.MOUSEBUTTONUP {
 						item := a.checkForFloorItem(a.loadedLevel, e.X, e.Y)
 						if item != nil {
 							input.Type = game.TakeItem
 							input.Item = item
-
 							a.game.InputCh <- &input
 						}
 					}
 
 				case inventoryState:
-					var input game.Input
+					input := game.Input{
+						Type: game.None,
+					}
 
 					if e.Type == sdl.MOUSEBUTTONDOWN {
 						// look for drag event if in inventory
@@ -222,7 +229,6 @@ func (a *App) Start() {
 
 								a.game.InputCh <- &input
 							}
-
 							a.dragged = nil
 						}
 					}
@@ -232,7 +238,9 @@ func (a *App) Start() {
 			case *sdl.KeyboardEvent:
 				switch a.state {
 				case mainState:
-					var input game.Input
+					input := game.Input{
+						Type: game.None,
+					}
 
 					if e.Type == sdl.KEYUP {
 						switch e.Keysym.Scancode {
@@ -246,25 +254,26 @@ func (a *App) Start() {
 							input.Type = game.Right
 						case sdl.SCANCODE_I:
 							a.toggleInventory()
-							input.Type = game.None
 						case sdl.SCANCODE_T:
 							input.Type = game.TakeAll
 						default:
-							input.Type = game.None
+							// do nothing
 						}
 
 						a.game.InputCh <- &input
 					}
+
 				case inventoryState:
-					var input game.Input
+					input := game.Input{
+						Type: game.None,
+					}
 
 					if e.Type == sdl.KEYUP {
 						switch e.Keysym.Scancode {
 						case sdl.SCANCODE_I:
 							a.toggleInventory()
-							input.Type = game.None
 						default:
-							input.Type = game.None
+							// do nothing
 						}
 
 						a.game.InputCh <- &input

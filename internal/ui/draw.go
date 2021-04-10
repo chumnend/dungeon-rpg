@@ -166,6 +166,11 @@ func (a *App) drawPickupBarItems() {
 	inventoryWIdth := a.width - inventoryStart
 	itemSize := int32(itemSizeRatio * float32(a.width))
 
+	items := a.loadedLevel.Items[a.loadedLevel.Player.Pos]
+	if len(items) == 0 {
+		return
+	}
+
 	a.renderer.Copy(a.inventoryBackground, nil, &sdl.Rect{
 		X: inventoryStart,
 		Y: a.height - itemSize,
@@ -173,7 +178,6 @@ func (a *App) drawPickupBarItems() {
 		H: itemSize,
 	})
 
-	items := a.loadedLevel.Items[a.loadedLevel.Player.Pos]
 	for i, item := range items {
 		itemSrcRect := &a.textureIndex[item.Symbol][0]
 		itemDestRect := a.getPickupItemRect(i)
