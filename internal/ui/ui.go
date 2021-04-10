@@ -31,9 +31,6 @@ func init() {
 	}
 }
 
-const spriteHeight = 32
-const itemSizeRatio = 0.033
-
 // App represents the application window that runs the RPG game
 type App struct {
 	width   int32
@@ -47,28 +44,25 @@ type App struct {
 	loadedLevel *game.Level
 	dragged     *game.Item
 
-	window              *sdl.Window
-	renderer            *sdl.Renderer
-	textureAtlas        *sdl.Texture
-	textureIndex        map[rune][]sdl.Rect
+	window       *sdl.Window
+	renderer     *sdl.Renderer
+	textureAtlas *sdl.Texture
+	textureIndex map[rune][]sdl.Rect
+
 	eventBackground     *sdl.Texture
 	inventoryBackground *sdl.Texture
-	str2TexSmall        map[string]*sdl.Texture
-	str2TexMedium       map[string]*sdl.Texture
-	str2TexLarge        map[string]*sdl.Texture
-	smallFont           *ttf.Font
-	mediumFont          *ttf.Font
-	largeFont           *ttf.Font
-	footstepSounds      []*mix.Chunk
-	doorOpenSounds      []*mix.Chunk
+	slotBackground      *sdl.Texture
+
+	str2TexSmall  map[string]*sdl.Texture
+	str2TexMedium map[string]*sdl.Texture
+	str2TexLarge  map[string]*sdl.Texture
+	smallFont     *ttf.Font
+	mediumFont    *ttf.Font
+	largeFont     *ttf.Font
+
+	footstepSounds []*mix.Chunk
+	doorOpenSounds []*mix.Chunk
 }
-
-type appState int
-
-const (
-	mainState appState = iota
-	inventoryState
-)
 
 // NewApp returns an App struct
 func NewApp(game *game.Game, width, height int32) *App {
@@ -143,7 +137,7 @@ func NewApp(game *game.Game, width, height int32) *App {
 		doorOpenSounds = append(doorOpenSounds, wav)
 	}
 
-	app := &App{
+	a := &App{
 		width:          width,
 		height:         height,
 		centerX:        -1,
@@ -165,12 +159,18 @@ func NewApp(game *game.Game, width, height int32) *App {
 		doorOpenSounds: doorOpenSounds,
 	}
 
-	app.textureAtlas = app.imgFileToTexture("internal/ui/assets/tiles/tiles.png")
-	app.textureIndex = app.loadTextureIndex("internal/ui/assets/atlas-index.txt")
-	app.eventBackground = app.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
-	app.inventoryBackground = app.getSinglePixelTexture(sdl.Color{R: 149, G: 84, B: 19, A: 200})
+	a.textureAtlas = a.imgFileToTexture("internal/ui/assets/tiles/tiles.png")
+	a.textureIndex = a.loadTextureIndex("internal/ui/assets/atlas-index.txt")
 
-	return app
+	a.eventBackground = a.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 128})
+	a.eventBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	a.inventoryBackground = a.getSinglePixelTexture(sdl.Color{R: 149, G: 84, B: 19, A: 200})
+	a.inventoryBackground.SetBlendMode(sdl.BLENDMODE_BLEND)
+
+	a.slotBackground = a.getSinglePixelTexture(sdl.Color{R: 0, G: 0, B: 0, A: 255})
+
+	return a
 }
 
 // Start starts the application window

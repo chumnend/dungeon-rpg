@@ -164,7 +164,7 @@ func (a *App) drawFloorItems() {
 func (a *App) drawPickupBarItems() {
 	inventoryStart := int32(float64(a.width) * 0.9)
 	inventoryWIdth := a.width - inventoryStart
-	itemSize := int32(itemSizeRatio * float32(a.width))
+	itemSize := a.getItemSize()
 
 	items := a.loadedLevel.Items[a.loadedLevel.Player.Pos]
 	if len(items) == 0 {
@@ -223,6 +223,13 @@ func (a *App) drawInventory() {
 	inventoryRect := a.getInventoryBackdropRect()
 	a.renderer.Copy(a.inventoryBackground, nil, inventoryRect)
 
+	// draw equipment bar
+	weaponRect := a.getWeaponSlotRect()
+	a.renderer.Copy(a.slotBackground, nil, weaponRect)
+
+	helmetRect := a.getHelmetSlotRect()
+	a.renderer.Copy(a.slotBackground, nil, helmetRect)
+
 	// draw player in inventory
 	playerSrcRect := a.textureIndex[a.loadedLevel.Player.Symbol][0]
 	a.renderer.Copy(a.textureAtlas, &playerSrcRect, &sdl.Rect{
@@ -237,7 +244,7 @@ func (a *App) drawInventory() {
 		itemSrcRect := &a.textureIndex[item.Symbol][0]
 
 		if item == a.dragged {
-			itemSize := int32(itemSizeRatio * float32(a.width))
+			itemSize := a.getItemSize()
 			mx, my, _ := sdl.GetMouseState()
 			itemDestRect := &sdl.Rect{
 				X: mx - itemSize/2,

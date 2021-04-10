@@ -5,7 +5,7 @@ import (
 )
 
 func (a *App) getPickupItemRect(i int) *sdl.Rect {
-	itemSize := int32(itemSizeRatio * float32(a.width))
+	itemSize := a.getItemSize()
 
 	return &sdl.Rect{
 		X: a.width - itemSize - int32(i)*itemSize,
@@ -31,12 +31,36 @@ func (a *App) getInventoryBackdropRect() *sdl.Rect {
 
 func (a *App) getInventoryItemRect(i int) *sdl.Rect {
 	inventoryRect := a.getInventoryBackdropRect()
-	itemSize := int32(itemSizeRatio * float32(a.width))
+	itemSize := a.getItemSize()
 
 	return &sdl.Rect{
 		X: inventoryRect.X + int32(i)*itemSize,
 		Y: inventoryRect.Y + inventoryRect.H - itemSize,
 		W: itemSize,
 		H: itemSize,
+	}
+}
+
+func (a *App) getWeaponSlotRect() *sdl.Rect {
+	inventoryRect := a.getInventoryBackdropRect()
+	slotSize := a.getSlotSize()
+
+	return &sdl.Rect{
+		X: inventoryRect.X + inventoryRect.X/2 - slotSize/2,
+		Y: inventoryRect.Y + inventoryRect.H/3,
+		W: slotSize,
+		H: slotSize,
+	}
+}
+
+func (a *App) getHelmetSlotRect() *sdl.Rect {
+	inventoryRect := a.getInventoryBackdropRect()
+	slotSize := a.getSlotSize()
+
+	return &sdl.Rect{
+		X: inventoryRect.X + 3*inventoryRect.X/2 + slotSize/2,
+		Y: inventoryRect.Y + inventoryRect.H/3,
+		W: slotSize,
+		H: slotSize,
 	}
 }

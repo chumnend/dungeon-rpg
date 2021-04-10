@@ -89,7 +89,12 @@ func (a *App) loadTextureIndex(filename string) map[rune][]sdl.Rect {
 
 		rects := make([]sdl.Rect, 0)
 		for i := 0; i < int(variation); i++ {
-			rects = append(rects, sdl.Rect{X: int32(x * spriteHeight), Y: int32(y * spriteHeight), W: spriteHeight, H: spriteHeight})
+			rects = append(rects, sdl.Rect{
+				X: int32(x * spriteHeight),
+				Y: int32(y * spriteHeight),
+				W: spriteHeight,
+				H: spriteHeight,
+			})
 			x = (x + 1)
 			if x > 62 {
 				x = 0
