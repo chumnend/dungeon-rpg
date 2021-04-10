@@ -199,7 +199,7 @@ func (a *App) Start() {
 					}
 
 					if e.Type == sdl.MOUSEBUTTONUP {
-						item := a.checkForFloorItem(a.loadedLevel, e.X, e.Y)
+						item := a.checkForFloorItem(e.X, e.Y)
 						if item != nil {
 							input.Type = game.TakeItem
 							input.Item = item
@@ -214,7 +214,7 @@ func (a *App) Start() {
 
 					if e.Type == sdl.MOUSEBUTTONDOWN {
 						// look for drag event if in inventory
-						item := a.checkForInventoryItem(a.loadedLevel, e.X, e.Y)
+						item := a.checkForInventoryItem(e.X, e.Y)
 						if item != nil {
 							a.dragged = item
 						}
@@ -222,13 +222,20 @@ func (a *App) Start() {
 
 					if e.Type == sdl.MOUSEBUTTONUP {
 						if a.dragged != nil {
-							shouldDrop := a.checkForDropItem(a.loadedLevel, e.X, e.Y)
+							item := a.checkForEquipItem(e.X, e.Y)
+							if item != nil {
+								input.Type = game.EquipItem
+								input.Item = item
+								a.game.InputCh <- &input
+							}
+
+							shouldDrop := a.checkForDropItem(e.X, e.Y)
 							if shouldDrop {
 								input.Type = game.DropItem
 								input.Item = a.dragged
-
 								a.game.InputCh <- &input
 							}
+
 							a.dragged = nil
 						}
 					}

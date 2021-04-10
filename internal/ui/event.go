@@ -2,7 +2,6 @@ package ui
 
 import (
 	"github.com/chumnend/dungeon-rpg/internal/game"
-	"github.com/veandco/go-sdl2/sdl"
 )
 
 func (a *App) toggleInventory() {
@@ -14,14 +13,10 @@ func (a *App) toggleInventory() {
 	}
 }
 
-func (a *App) checkForFloorItem(level *game.Level, mx int32, my int32) *game.Item {
-	mouseRect := &sdl.Rect{
-		X: mx,
-		Y: my,
-		W: 1,
-		H: 1,
-	}
+func (a *App) checkForFloorItem(mx int32, my int32) *game.Item {
+	mouseRect := a.getMouseRect(mx, my)
 
+	level := a.loadedLevel
 	items := level.Items[level.Player.Pos]
 	for i, item := range items {
 		itemRect := a.getPickupItemRect(i)
@@ -33,14 +28,10 @@ func (a *App) checkForFloorItem(level *game.Level, mx int32, my int32) *game.Ite
 	return nil
 }
 
-func (a *App) checkForInventoryItem(level *game.Level, mx int32, my int32) *game.Item {
-	mouseRect := &sdl.Rect{
-		X: mx,
-		Y: my,
-		W: 1,
-		H: 1,
-	}
+func (a *App) checkForInventoryItem(mx int32, my int32) *game.Item {
+	mouseRect := a.getMouseRect(mx, my)
 
+	level := a.loadedLevel
 	items := level.Player.Items
 	for i, item := range items {
 		itemRect := a.getInventoryItemRect(i)
@@ -52,13 +43,8 @@ func (a *App) checkForInventoryItem(level *game.Level, mx int32, my int32) *game
 	return nil
 }
 
-func (a *App) checkForDropItem(level *game.Level, mx int32, my int32) bool {
-	mouseRect := &sdl.Rect{
-		X: mx,
-		Y: my,
-		W: 1,
-		H: 1,
-	}
+func (a *App) checkForDropItem(mx int32, my int32) bool {
+	mouseRect := a.getMouseRect(mx, my)
 
 	inventoryRect := a.getInventoryBackdropRect()
 	if !inventoryRect.HasIntersection(mouseRect) {
@@ -66,4 +52,24 @@ func (a *App) checkForDropItem(level *game.Level, mx int32, my int32) bool {
 	}
 
 	return false
+}
+
+func (a *App) checkForEquipItem(mx int32, my int32) *game.Item {
+	mouseRect := a.getMouseRect(mx, my)
+
+	if a.dragged.Type == game.Weapon {
+		weaponRect := a.getWeaponSlotRect()
+		if weaponRect.HasIntersection(mouseRect) {
+			return a.dragged
+		}
+	}
+
+	if a.dragged.Type == game.Armor {
+		armorRect := a.getArmorSlotRect()
+		if armorRect.HasIntersection(mouseRect) {
+			return a.dragged
+		}
+	}
+
+	return nil
 }

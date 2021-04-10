@@ -333,6 +333,20 @@ func (level *Level) attack(c1 *Character, c2 *Character) {
 	}
 }
 
+func (level *Level) equip(c *Character, targetItem *Item) {
+	for i, item := range c.Items {
+		if item == targetItem {
+			c.Items = append(c.Items[:i], c.Items[i+1:]...)
+		}
+	}
+
+	if targetItem.Type == Armor {
+		level.Player.Armor = targetItem
+	} else if targetItem.Type == Weapon {
+		level.Player.Weapon = targetItem
+	}
+}
+
 func (level *Level) moveItem(targetItem *Item, character *Character) {
 	pos := character.Pos
 

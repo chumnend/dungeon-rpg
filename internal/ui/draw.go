@@ -226,9 +226,15 @@ func (a *App) drawInventory() {
 	// draw equipment bar
 	weaponRect := a.getWeaponSlotRect()
 	a.renderer.Copy(a.slotBackground, nil, weaponRect)
+	if a.loadedLevel.Player.Weapon != nil {
+		a.renderer.Copy(a.textureAtlas, &a.textureIndex[a.loadedLevel.Player.Weapon.Symbol][0], weaponRect)
+	}
 
-	helmetRect := a.getHelmetSlotRect()
-	a.renderer.Copy(a.slotBackground, nil, helmetRect)
+	armorRect := a.getArmorSlotRect()
+	a.renderer.Copy(a.slotBackground, nil, armorRect)
+	if a.loadedLevel.Player.Armor != nil {
+		a.renderer.Copy(a.textureAtlas, &a.textureIndex[a.loadedLevel.Player.Armor.Symbol][0], armorRect)
+	}
 
 	// draw player in inventory
 	playerSrcRect := a.textureIndex[a.loadedLevel.Player.Symbol][0]

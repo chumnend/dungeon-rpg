@@ -19,6 +19,7 @@ const (
 	Right
 	TakeItem
 	DropItem
+	EquipItem
 	TakeAll
 	None
 )
@@ -49,6 +50,8 @@ type Character struct {
 	Speed        float64
 	ActionPoints float64
 	SightRange   int
+	Weapon       *Item
+	Armor        *Item
 	Items        []*Item
 }
 
@@ -119,6 +122,8 @@ func (game *Game) handleInput(input *Input) {
 		level.moveItem(input.Item, &level.Player.Character)
 	case DropItem:
 		level.dropItem(input.Item, &level.Player.Character)
+	case EquipItem:
+		level.equip(&level.Player.Character, input.Item)
 	case TakeAll:
 		items := level.Items[level.Player.Pos]
 		if len(items) > 0 {

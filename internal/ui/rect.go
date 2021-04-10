@@ -4,6 +4,15 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+func (a *App) getMouseRect(mx int32, my int32) *sdl.Rect {
+	return &sdl.Rect{
+		X: mx,
+		Y: my,
+		W: 1,
+		H: 1,
+	}
+}
+
 func (a *App) getPickupItemRect(i int) *sdl.Rect {
 	itemSize := a.getItemSize()
 
@@ -53,7 +62,7 @@ func (a *App) getWeaponSlotRect() *sdl.Rect {
 	}
 }
 
-func (a *App) getHelmetSlotRect() *sdl.Rect {
+func (a *App) getArmorSlotRect() *sdl.Rect {
 	inventoryRect := a.getInventoryBackdropRect()
 	slotSize := a.getSlotSize()
 

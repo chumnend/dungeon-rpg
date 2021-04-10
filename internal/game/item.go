@@ -3,7 +3,18 @@ package game
 // Item struct declaration
 type Item struct {
 	Entity
+	Type ItemType
 }
+
+// ItemType declaration
+type ItemType int
+
+// ItemType enum declaration
+const (
+	Weapon ItemType = iota
+	Armor
+	Other
+)
 
 // NewSword creates a sword entity
 func NewSword(p Pos) *Item {
@@ -13,6 +24,7 @@ func NewSword(p Pos) *Item {
 			Name:   "Sword",
 			Symbol: 's',
 		},
+		Type: Weapon,
 	}
 }
 
@@ -24,5 +36,6 @@ func NewHelmet(p Pos) *Item {
 			Name:   "Helmet",
 			Symbol: 'h',
 		},
+		Type: Armor,
 	}
 }
