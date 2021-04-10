@@ -323,11 +323,22 @@ func (level *Level) bresenham(start Pos, end Pos) {
 }
 
 func (level *Level) attack(c1 *Character, c2 *Character) {
-	c2.Hitpoints -= c1.Damage
 	c1.ActionPoints--
 
+	atkPower := c1.Damage
+	if c1.Weapon != nil {
+		atkPower = int(float64(atkPower) * c1.Weapon.Power)
+	}
+
+	damage := atkPower
+	if c2.Armor != nil {
+		damage = int(float64(damage) * c2.Armor.Power)
+	}
+
+	c2.Hitpoints -= damage
+
 	if c2.Hitpoints > 0 {
-		level.AddEvent(c1.Name + " attacked " + c2.Name + " for " + strconv.Itoa(c1.Damage))
+		level.AddEvent(c1.Name + " attacked " + c2.Name + " for " + strconv.Itoa(damage))
 	} else {
 		level.AddEvent(c1.Name + " killed " + c2.Name)
 	}

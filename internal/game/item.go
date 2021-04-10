@@ -3,7 +3,8 @@ package game
 // Item struct declaration
 type Item struct {
 	Entity
-	Type ItemType
+	Type  ItemType
+	Power float64
 }
 
 // ItemType declaration
@@ -24,7 +25,8 @@ func NewSword(p Pos) *Item {
 			Name:   "Sword",
 			Symbol: 's',
 		},
-		Type: Weapon,
+		Type:  Weapon,
+		Power: 2.0,
 	}
 }
 
@@ -36,6 +38,7 @@ func NewHelmet(p Pos) *Item {
 			Name:   "Helmet",
 			Symbol: 'h',
 		},
-		Type: Armor,
+		Type:  Armor,
+		Power: 0.8,
 	}
 }
