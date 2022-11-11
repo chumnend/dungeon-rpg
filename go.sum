@@ -1,4 +1,2 @@
-github.com/chumnend/simple-rpg v0.0.0-20210323025810-706c4274c603 h1:8k+QwoohkyAFLCHKPXGLleBCcsP+IPTwbKlLKHYJi6w=
-github.com/chumnend/simple-rpg v0.0.0-20210323025810-706c4274c603/go.mod h1:BnAVWynHpWdbPvNxOSvwuHPfXh1YVJ3wytxh8hh8zW4=
 github.com/veandco/go-sdl2 v0.4.5 h1:GFIjMabK7y2XWpr9sGvN7RDKHt7vrA7XPTUW60eOw+Y=
 github.com/veandco/go-sdl2 v0.4.5/go.mod h1:OROqMhHD43nT4/i9crJukyVecjPNYYuCofep6SNiAjY=
